@@ -16,6 +16,14 @@ class UserCreate(BaseModel):
     password: str
     role: str = "cashier"
 
+class ProductCreate(BaseModel):
+    name: str
+    price: float
+    category: str
+    unit: str = "pc"
+    image: str = "🥤"
+    stock: float = 0.0
+
 from backend.database import engine, get_db
 from backend import models, auth
 
@@ -35,10 +43,10 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, specify frontend URL
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], 
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "Accept"], # Explicitly allow common headers
+    allow_headers=["*"], # Allow all headers for now
 )
 
 # --- AUTH ROUTES ---
@@ -144,20 +152,17 @@ async def get_products(db: Session = Depends(get_db)):
 
 @app.post("/products")
 async def create_product(
-    name: str = Form(...),
-    price: float = Form(...),
-    category: str = Form(...),
-    unit: str = Form(...),
-    image: str = Form("🥤"), # Default emoji
+    product: ProductCreate,
     db: Session = Depends(get_db), 
     current_user = Depends(auth.check_admin)
 ):
     new_product = models.Product(
-        name=name,
-        price=price,
-        category=category,
-        unit=unit,
-        image=image
+        name=product.name,
+        price=product.price,
+        category=product.category,
+        unit=product.unit,
+        image=product.image,
+        stock=product.stock
     )
     db.add(new_product)
     db.commit()
@@ -206,15 +211,46 @@ async def create_order(order_data: dict, db: Session = Depends(get_db), current_
     db.add(new_order)
     db.flush() # Get ID before items
     
+    def parse_unit_grams(unit_str):
+        import re
+        match = re.search(r"(\d+)", unit_str)
+        if match:
+            val = int(match.group(1))
+            if "kg" in unit_str.lower():
+                return val * 1000
+            return val
+        return 1 # Fallback to 1g if unit is "g" or similar
+
     for item in order_data['items']:
+        product = db.query(models.Product).filter(models.Product.id == item['product_id']).first()
+        if not product:
+            continue
+            
+        # Calculate Price for Gram Section Items
+        final_price = item['price']
+        if product.category == "Gram Section":
+            unit_grams = parse_unit_grams(product.unit)
+            # final_price in order represents (product.price / unit_grams) * weight
+            final_price = (product.price / unit_grams) * item['quantity']
+        else:
+            final_price = product.price * item['quantity']
+
         new_item = models.OrderItem(
             order_id=new_order.id,
             product_id=item['product_id'],
             quantity=item['quantity'],
-            price=item['price']
+            price=final_price
         )
         db.add(new_item)
+        
+        # Deduct Stock
+        product.stock -= item['quantity']
     
+    # Recalculate total for precision
+    db.flush()
+    order_items = db.query(models.OrderItem).filter(models.OrderItem.order_id == new_order.id).all()
+    new_order.total = sum(i.price for i in order_items)
+
     db.commit()
     db.refresh(new_order)
     return new_order
@@ -293,10 +329,10 @@ async def seed_db(db: Session = Depends(get_db)):
     
     # Create Sample Products
     products = [
-        {"name": "Mixed Fruit Juice", "price": 450, "category": "Fruit & Juice", "unit": "pc", "image": "🍉"},
-        {"name": "Mango Delight", "price": 550, "category": "Fruit & Juice", "unit": "pc", "image": "🥭"},
-        {"name": "Spicy Murukku", "price": 120, "category": "Gram Section", "unit": "g", "image": "🥨"},
-        {"name": "Sweet Murukku", "price": 150, "category": "Gram Section", "unit": "g", "image": "🍩"}
+        {"name": "Mixed Fruit Juice", "price": 450, "category": "FruitSalad & Juice", "unit": "pc", "image": "🍉", "stock": 50},
+        {"name": "Mango Delight", "price": 550, "category": "FruitSalad & Juice", "unit": "pc", "image": "🥭", "stock": 50},
+        {"name": "Spicy Murukku", "price": 120, "category": "Gram Section", "unit": "100g", "image": "🥨", "stock": 5000},
+        {"name": "Sweet Murukku", "price": 150, "category": "Gram Section", "unit": "100g", "image": "🍩", "stock": 5000}
     ]
     for p in products:
         db.add(models.Product(**p))

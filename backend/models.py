@@ -18,6 +18,7 @@ class Product(Base):
     unit = Column(String) # 'pc' or 'g' (100g)
     category = Column(String) # 'Gram Section' or 'Fruit & Juice'
     image = Column(String) # Emoji or Image URL
+    stock = Column(Float, default=0.0) # Inventory level (pc or g)
 
 class Order(Base):
     __tablename__ = "orders"
@@ -27,16 +28,16 @@ class Order(Base):
     paid = Column(Float)
     balance = Column(Float)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    cashier_id = Column(Integer, ForeignKey("users.id"))
+    cashier_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     
     cashier = relationship("User")
-    items = relationship("OrderItem", back_populates="order")
+    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
 class OrderItem(Base):
     __tablename__ = "order_items"
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("orders.id"))
-    product_id = Column(Integer, ForeignKey("products.id"))
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"))
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"))
     quantity = Column(Float)
     price = Column(Float) # Price at time of purchase
     
