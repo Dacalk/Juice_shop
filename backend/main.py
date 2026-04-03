@@ -24,14 +24,20 @@ class ProductCreate(BaseModel):
     image: str = "🥤"
     stock: float = 0.0
 
-from backend.database import engine, get_db
-from backend import models, auth
+try:
+    # When run as a package: python -m uvicorn backend.main:app
+    from backend.database import engine, get_db
+    from backend import models, auth
+except ImportError:
+    # When run directly from backend/ folder: uvicorn main:app
+    from database import engine, get_db
+    import models, auth
 
 # Initialize database tables
 models.Base.metadata.create_all(bind=engine)
 
 # Ensure uploads directory exists
-UPLOAD_DIR = "backend/uploads"
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
@@ -43,7 +49,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], 
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"], # Allow all headers for now

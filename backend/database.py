@@ -3,11 +3,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-# Create backend directory if it doesn't exist
-if not os.path.exists('backend'):
-    os.makedirs('backend')
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./backend/pos.db"
+# Resolve DB path relative to this file so it works from any working directory
+_HERE = os.path.dirname(os.path.abspath(__file__))
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(_HERE, 'pos.db')}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
