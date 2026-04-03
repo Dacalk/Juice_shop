@@ -1,7 +1,10 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from backend.database import Base
+try:
+    from backend.database import Base
+except ImportError:
+    from database import Base
 
 class User(Base):
     __tablename__ = "users"
