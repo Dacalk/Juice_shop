@@ -16,14 +16,21 @@ class UserCreate(BaseModel):
     password: str
     role: str = "cashier"
 
-from backend.database import engine, get_db
-from backend import models, auth
+try:
+    # When run as a package: python -m uvicorn backend.main:app
+    from backend.database import engine, get_db
+    from backend import models, auth
+except ImportError:
+    # When run directly from backend/ folder: uvicorn main:app
+    from database import engine, get_db
+    import models, auth
 
 # Initialize database tables
 models.Base.metadata.create_all(bind=engine)
 
 # Ensure uploads directory exists
-UPLOAD_DIR = "backend/uploads"
+# Ensure uploads directory exists relative to this file
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 

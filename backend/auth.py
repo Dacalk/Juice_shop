@@ -5,8 +5,12 @@ import bcrypt  # USING DIRECT BCRYPT FOR WINDOWS STABILITY
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from backend.database import get_db
-from backend import models
+try:
+    from backend.database import get_db
+    from backend import models
+except ImportError:
+    from database import get_db
+    import models
 
 # SECRET_KEY should be in environment variables in production
 SECRET_KEY = "juice-bar-antigravity-secret-key-12345"

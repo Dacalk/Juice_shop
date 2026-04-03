@@ -1,5 +1,9 @@
-from backend import models, auth, database
-from backend.database import SessionLocal, engine
+try:
+    from backend import models, auth, database
+    from backend.database import SessionLocal, engine
+except ImportError:
+    import models, auth, database
+    from database import SessionLocal, engine
 from sqlalchemy import text
 
 def seed_db():
