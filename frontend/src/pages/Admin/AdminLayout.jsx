@@ -20,10 +20,9 @@ const AdminLayout = () => {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, exact: true },
+    { name: 'Sales Reports', path: '/admin', icon: BarChart3, exact: true },
     { name: 'Products', path: '/admin/products', icon: Package },
-    { name: 'Cashiers', path: '/admin/users', icon: Users },
-    { name: 'Sales Reports', path: '/admin/reports', icon: BarChart3 },
+    { name: 'Users', path: '/admin/users', icon: Users },
   ];
 
   return (
@@ -64,26 +63,22 @@ const AdminLayout = () => {
           </nav>
         </div>
 
-        {/* User Actions */}
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-3 pr-4 border-r border-slate-100">
-            <div className="text-right">
-              <p className="text-sm font-bold text-slate-800 leading-none">{user?.username || 'Admin'}</p>
-              <p className="text-[10px] text-slate-400 uppercase font-black mt-1 tracking-tighter">System Owner</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-slate-500 font-bold uppercase transition-transform hover:scale-110">
-              {user?.username?.charAt(0) || 'A'}
-            </div>
+        {/* User Profile & Logout (Combined) */}
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 p-1.5 pr-4 rounded-full border border-slate-200 bg-white hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all duration-300 group shadow-sm active:scale-95"
+          title="Logout"
+        >
+          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold uppercase group-hover:bg-red-100 group-hover:text-red-600 transition-colors">
+            {user?.username?.charAt(0) || 'A'}
           </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all font-bold border border-transparent hover:border-red-100 group"
-            title="Log Out"
-          >
-            <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="hidden md:inline text-sm">Log Out</span>
-          </button>
-        </div>
+          <div className="text-left hidden sm:block">
+            <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-red-600">{user?.username || 'Admin'}</p>
+            <p className="text-[9px] text-slate-400 uppercase font-black mt-1 tracking-widest flex items-center gap-1 group-hover:text-red-400">
+               Click to Logout <LogOut size={10} />
+            </p>
+          </div>
+        </button>
       </header>
 
       {/* Main Content Area */}

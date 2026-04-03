@@ -22,27 +22,59 @@ const Reports = () => {
     num_orders: 0,
     orders: []
   });
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const token = useAuthStore(state => state.token);
 
   useEffect(() => {
     fetchReport();
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchReport = async () => {
     setLoading(true);
     try {
+      const params = {};
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+
       const response = await axios.get(`${API_URL}/reports/daily`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        params: params
       });
       setReportData(response.data);
     } catch (err) {
-      setError('Failed to fetch daily report');
+      setError('Failed to fetch report data');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExport = () => {
+    if (!reportData.orders || reportData.orders.length === 0) return;
+
+    const headers = ["Invoice", "Date", "Time", "Total (LKR)"];
+    const csvContent = [
+      headers.join(","),
+      ...reportData.orders.map(o => [
+        o.invoice_number,
+        new Date(o.timestamp).toLocaleDateString(),
+        new Date(o.timestamp).toLocaleTimeString(),
+        o.total
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `report_${startDate || 'today'}_to_${endDate || 'today'}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const StatCard = ({ title, value, icon: Icon, trend, colorClass }) => (
@@ -82,17 +114,41 @@ const Reports = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 flex items-center gap-3 text-slate-500 text-sm font-bold">
-            <Calendar size={18} />
-            {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-2">
+            <Calendar size={16} className="text-slate-400" />
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-transparent border-none text-xs font-bold text-slate-600 focus:ring-0 p-0"
+              placeholder="Start Date"
+            />
+            <span className="text-slate-300">to</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-transparent border-none text-xs font-bold text-slate-600 focus:ring-0 p-0"
+              placeholder="End Date"
+            />
           </div>
-          <button className="h-14 w-14 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center rounded-2xl transition-all">
-            <Filter size={18} />
+
+          <button 
+            onClick={() => {setStartDate(''); setEndDate('');}}
+            className="h-12 px-4 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center rounded-2xl transition-all text-xs font-bold"
+            title="Reset Filters"
+          >
+            Reset
           </button>
-          <button className="h-14 bg-emerald-500 text-white hover:bg-emerald-600 px-8 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95">
-            <Download size={18} />
-            Export Data
+
+          <button 
+            onClick={handleExport}
+            disabled={reportData.orders.length === 0}
+            className="h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95"
+          >
+            <Download size={16} />
+            Export CSV
           </button>
         </div>
       </div>

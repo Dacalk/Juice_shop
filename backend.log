@@ -1,0 +1,202 @@
+INFO:     Started server process [24791]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:50412 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50412 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50414 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50412 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56752 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56760 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56752 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56760 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56760 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56752 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45202 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45202 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58380 - "OPTIONS /products/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58380 - "PUT /products/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58380 - "DELETE /products/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58380 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58382 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58380 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58380 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53058 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53058 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59010 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59016 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33976 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33976 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33990 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42820 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42828 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42828 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42820 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49002 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49002 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36280 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36280 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42364 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42208 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42210 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42208 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42210 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42208 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42210 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42208 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38328 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38332 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33270 - "OPTIONS /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33270 - "POST /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37304 - "POST /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "OPTIONS /products/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "DELETE /products/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "OPTIONS /products/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42216 - "DELETE /products/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36954 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36962 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36954 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36962 - "GET /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55264 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55270 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55264 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55270 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48590 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48602 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48590 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48602 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48590 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48602 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48602 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48590 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51182 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51184 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56464 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56450 - "GET /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56450 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56464 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49316 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49322 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49322 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49316 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:48998 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:48998 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35336 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:48998 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35336 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35336 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:48998 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35336 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:48998 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35336 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:48998 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35336 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:48998 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54856 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54868 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54856 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54868 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59774 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59790 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59774 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59790 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:44202 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44210 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44202 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:44210 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:36218 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:36218 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:36218 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:36218 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:36218 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:36218 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:53926 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53928 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53926 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53928 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53926 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53928 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53926 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53926 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53928 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53926 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53180 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53180 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:53180 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:53180 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:53180 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:59612 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:57204 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57204 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57204 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57212 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57204 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57212 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57204 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57204 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57212 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57204 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:41384 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:41384 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:34684 - "POST /auth/register HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:43544 - "OPTIONS /users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43544 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:43544 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:43544 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:43544 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:43544 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:43544 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:43544 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59636 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:59636 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:59636 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:59636 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:59636 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "POST /users HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:52658 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44576 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44576 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52658 - "OPTIONS /reports/daily HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52658 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:44576 - "GET /reports/daily HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49518 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49530 - "GET /products HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49518 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49530 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59710 - "POST /auth/register HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60960 - "GET /users HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55692 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51980 - "POST /auth/register HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24791]

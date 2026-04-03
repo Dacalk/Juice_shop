@@ -9,8 +9,15 @@ import json
 import os
 import shutil
 
-from backend import models, auth, database
+from pydantic import BaseModel
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str = "cashier"
+
 from backend.database import engine, get_db
+from backend import models, auth
 
 # Initialize database tables
 models.Base.metadata.create_all(bind=engine)
@@ -31,7 +38,7 @@ app.add_middleware(
     allow_origins=["*"], # In production, specify frontend URL
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "Accept"], # Explicitly allow common headers
 )
 
 # --- AUTH ROUTES ---
@@ -52,12 +59,83 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         "user": {"username": user.username, "role": user.role}
     }
 
+# --- PUBLIC REGISTRATION ROUTE ---
+@app.post("/auth/register")
+async def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    # Check if user already exists
+    if db.query(models.User).filter(models.User.username == user.username).first():
+        raise HTTPException(status_code=400, detail="Username already registered")
+    new_user = models.User(
+        username=user.username,
+        hashed_password=auth.get_password_hash(user.password),
+        role=user.role
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    # Auto-login after registration
+    access_token = auth.create_access_token(data={"sub": new_user.username})
+    return {
+        "id": new_user.id,
+        "username": new_user.username,
+        "role": new_user.role,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
 # --- USER MANAGEMENT ---
 @app.get("/users", response_model=List[dict])
 async def get_users(db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
     users = db.query(models.User).all()
     # Mask password hashes for privacy
     return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
+
+@app.post("/users")
+async def create_user(user: UserCreate, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
+    # Check if user already exists
+    if db.query(models.User).filter(models.User.username == user.username).first():
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    new_user = models.User(
+        username=user.username,
+        hashed_password=auth.get_password_hash(user.password),
+        role=user.role
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"id": new_user.id, "username": new_user.username, "role": new_user.role}
+
+@app.put("/users/{user_id}")
+async def update_user(user_id: int, user_update: dict, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if 'username' in user_update:
+        db_user.username = user_update['username']
+    if 'role' in user_update:
+        db_user.role = user_update['role']
+    if 'password' in user_update and user_update['password']:
+        db_user.hashed_password = auth.get_password_hash(user_update['password'])
+        
+    db.commit()
+    db.refresh(db_user)
+    return {"id": db_user.id, "username": db_user.username, "role": db_user.role}
+
+@app.delete("/users/{user_id}")
+async def delete_user(user_id: int, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Prevent self-deletion
+    if db_user.username == current_user.username:
+        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+    
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted successfully"}
 
 # --- PRODUCT ROUTES ---
 @app.get("/products")
@@ -70,25 +148,16 @@ async def create_product(
     price: float = Form(...),
     category: str = Form(...),
     unit: str = Form(...),
-    image_file: Optional[UploadFile] = File(None),
+    image: str = Form("🥤"), # Default emoji
     db: Session = Depends(get_db), 
     current_user = Depends(auth.check_admin)
 ):
-    image_name = "default-product.png" # Placeholder if no file
-    
-    if image_file:
-        file_extension = image_file.filename.split(".")[-1]
-        image_name = f"prod_{name.replace(' ', '_').lower()}_{int(os.path.getmtime(UPLOAD_DIR))}.{file_extension}"
-        file_path = os.path.join(UPLOAD_DIR, image_name)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-            
     new_product = models.Product(
         name=name,
         price=price,
         category=category,
         unit=unit,
-        image=image_name
+        image=image
     )
     db.add(new_product)
     db.commit()
@@ -151,11 +220,36 @@ async def create_order(order_data: dict, db: Session = Depends(get_db), current_
     return new_order
 
 @app.get("/reports/daily")
-async def get_daily_report(db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    # Basic daily aggregation (today's orders)
-    from datetime import datetime, date
-    today = date.today()
-    orders = db.query(models.Order).filter(models.Order.timestamp >= today).all()
+async def get_daily_report(
+    start_date: Optional[str] = None, 
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db), 
+    current_user = Depends(auth.check_admin)
+):
+    from datetime import datetime, date, time
+    
+    query = db.query(models.Order)
+    
+    if start_date:
+        try:
+            start_dt = datetime.combine(date.fromisoformat(start_date), time.min)
+            query = query.filter(models.Order.timestamp >= start_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+            
+    if end_date:
+        try:
+            end_dt = datetime.combine(date.fromisoformat(end_date), time.max)
+            query = query.filter(models.Order.timestamp <= end_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+            
+    if not start_date and not end_date:
+        # Default to today if no filters provided
+        today = date.today()
+        query = query.filter(models.Order.timestamp >= today)
+        
+    orders = query.order_by(models.Order.timestamp.desc()).all()
     
     total_sales = sum(o.total for o in orders)
     num_orders = len(orders)

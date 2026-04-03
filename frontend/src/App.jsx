@@ -1,21 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './store/useAuthStore';
+import { Users as UsersIcon } from 'lucide-react';
+import Register from './pages/Register';
 import Login from './pages/Login';
 import AdminLayout from './pages/Admin/AdminLayout';
 import Products from './pages/Admin/Products';
 import Users from './pages/Admin/Users';
 import Reports from './pages/Admin/Reports';
-
 // Admin Dashboard Home / Summary (Placeholder for now)
 const AdminHome = () => (
-  <div className="space-y-6">
-    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-      <h1 className="text-3xl font-black text-slate-800">Welcome, System Admin!</h1>
-      <p className="text-slate-500 mt-2">Here is a quick overview of your business performance today.</p>
-    </div>
-    <Reports />
-  </div>
+  <Reports />
 );
 
 const POS = () => (
@@ -46,6 +41,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
         
         {/* Admin Routes */}
         <Route path="/admin" element={
@@ -56,7 +52,6 @@ function App() {
           <Route index element={<AdminHome />} />
           <Route path="products" element={<Products />} />
           <Route path="users" element={<Users />} />
-          <Route path="reports" element={<Reports />} />
         </Route>
 
         {/* Cashier Routes */}

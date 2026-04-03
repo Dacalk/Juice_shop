@@ -27,18 +27,14 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const token = useAuthStore(state => state.token);
-  const fileInputRef = useRef(null);
-  const editFileInputRef = useRef(null);
-
   // Add Form State
   const [formData, setFormData] = useState({
     name: '',
     price: '',
     category: 'FruitSalad & Juice',
-    unit: 'pc'
+    unit: 'pc',
+    image: '🥤'
   });
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
 
   // Edit Form State
   const [editingProduct, setEditingProduct] = useState(null);
@@ -46,7 +42,8 @@ const Products = () => {
     name: '',
     price: '',
     category: 'FruitSalad & Juice',
-    unit: 'pc'
+    unit: 'pc',
+    image: ''
   });
 
   useEffect(() => {
@@ -76,20 +73,11 @@ const Products = () => {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    const data = new FormData();
-    data.append('name', formData.name);
-    data.append('price', formData.price);
-    data.append('category', formData.category);
-    data.append('unit', formData.unit);
-    if (selectedFile) {
-      data.append('image_file', selectedFile);
-    }
-
     try {
-      const response = await axios.post(`${API_URL}/products`, data, {
+      const response = await axios.post(`${API_URL}/products`, formData, {
         headers: { 
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
       setProducts([...products, response.data]);
@@ -107,7 +95,8 @@ const Products = () => {
       name: product.name,
       price: product.price,
       category: product.category,
-      unit: product.unit
+      unit: product.unit,
+      image: product.image
     });
     setIsEditModalOpen(true);
   };
@@ -131,9 +120,7 @@ const Products = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', price: '', category: 'FruitSalad & Juice', unit: 'pc' });
-    setSelectedFile(null);
-    setPreviewUrl(null);
+    setFormData({ name: '', price: '', category: 'FruitSalad & Juice', unit: 'pc', image: '🥤' });
   };
 
   const handleDeleteProduct = async (id) => {
@@ -150,19 +137,6 @@ const Products = () => {
   };
 
   const renderProductImage = (image) => {
-    if (image && image.includes('.')) {
-      return (
-        <img 
-          src={`${API_URL}/uploads/${image}`} 
-          alt="Product" 
-          className="w-full h-full object-cover rounded-xl"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = 'https://via.placeholder.com/150?text=Product';
-          }}
-        />
-      );
-    }
     return <span className="text-2xl">{image || '🥤'}</span>;
   };
 
@@ -312,13 +286,20 @@ const Products = () => {
               <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"><X size={20} /></button>
             </div>
             <form onSubmit={handleAddProduct} className="p-8 space-y-6">
-              <div className="group relative w-full h-40 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 hover:border-primary cursor-pointer flex flex-col items-center justify-center overflow-hidden" onClick={() => fileInputRef.current.click()}>
-                {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover" /> : <><Upload size={24} className="text-slate-400" /><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Upload photo</p></>}
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Food Emoji</label>
+                <input required className="input rounded-2xl text-2xl text-center" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} placeholder="🥤" />
               </div>
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name</label>
                 <input required className="input rounded-2xl" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
+                <select className="input rounded-2xl" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
+                  <option value="FruitSalad & Juice">Fruitsalad and Juice</option>
+                  <option value="Gram Section">Gram Section</option>
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -350,8 +331,19 @@ const Products = () => {
             </div>
             <form onSubmit={handleUpdateProduct} className="p-8 space-y-6">
               <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Food Emoji</label>
+                <input required className="input rounded-2xl text-2xl text-center" value={editFormData.image} onChange={(e) => setEditFormData({...editFormData, image: e.target.value})} />
+              </div>
+              <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name</label>
                 <input required className="input rounded-2xl" value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
+                <select className="input rounded-2xl" value={editFormData.category} onChange={(e) => setEditFormData({...editFormData, category: e.target.value})}>
+                  <option value="FruitSalad & Juice">Fruitsalad and Juice</option>
+                  <option value="Gram Section">Gram Section</option>
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
