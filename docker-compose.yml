@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: juice-bar-backend
     volumes:
-      - juice-bar-data:/app/backend/uploads
+      - juice-bar-data:/app/uploads
       - ./backend/pos.db:/app/pos.db
     environment:
       - ALLOWED_ORIGINS=http://localhost:80,http://localhost,http://127.0.0.1

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from datetime import timedelta
 from typing import List, Optional
 import json
@@ -40,15 +41,24 @@ run_migrations()
 # Initialize database tables
 models.Base.metadata.create_all(bind=engine)
 
-# Ensure uploads directory exists
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-
 app = FastAPI(title="Juice Bar POS API")
 
 # Mount Static Files
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+@app.get("/health")
+async def health_check(db: Session = Depends(get_db)):
+    """API and Database health monitor."""
+    try:
+        # Test DB connection
+        db.execute(text("SELECT 1"))
+        return {"status": "healthy", "database": "connected", "uploads_dir": UPLOAD_DIR}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
 
 # Configure CORS
 # In production, set ALLOWED_ORIGINS environment variable to your frontend URL
@@ -359,7 +369,7 @@ async def print_receipt(receipt_data: dict, current_user = Depends(auth.get_curr
     return {"status": "printed", "message": "Receipt sent to printer spooler"}
 
 # --- SEED DATA (RUN ONCE) ---
-@app.post("/seed")
+@app.get("/seed")
 async def seed_db(db: Session = Depends(get_db)):
     # Check if admin exists
     if db.query(models.User).filter(models.User.username == "admin").first():

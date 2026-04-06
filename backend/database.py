@@ -7,6 +7,7 @@ import os
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _DEFAULT_DB_PATH = os.path.join(_HERE, 'pos.db')
 db_file_path = os.getenv("DATABASE_PATH", _DEFAULT_DB_PATH)
+print(f"[Database] Using DB at: {db_file_path}")
 
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_file_path}"
 

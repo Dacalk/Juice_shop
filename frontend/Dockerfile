@@ -1,5 +1,5 @@
 # Stage 1: Build the React application
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -23,6 +23,9 @@ FROM nginx:stable-alpine
 
 # Copy the build output to replace the default nginx contents.
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy custom Nginx configuration to handle SPA routing
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80

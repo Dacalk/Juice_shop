@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, User, Coffee, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
+import Logo from '../components/Logo';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -40,8 +41,8 @@ const Login = () => {
           
           {/* Header */}
           <div className="p-10 pb-6 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2rem] bg-slate-900 text-white shadow-2xl mb-6 transform -rotate-3 transition-transform hover:rotate-0 duration-500">
-              <Coffee size={40} className="drop-shadow-lg" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2rem] shadow-2xl mb-6 transform -rotate-3 transition-transform hover:rotate-0 duration-500 overflow-hidden">
+              <Logo size={80} />
             </div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight mb-2">Juice Bar POS</h1>
             <p className="text-slate-500 font-medium">Welcome back! Please login to your terminal.</p>

@@ -13,6 +13,7 @@ import {
   Printer
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import Logo from '../../components/Logo';
 
 import { API_URL } from '../../store/useAuthStore';
 
@@ -150,99 +151,128 @@ const Reports = () => {
       <div id="print-report" className="hidden print:block">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
-            /* Hide everything on the page */
+            /* Hide everything else on the page */
             body * { visibility: hidden !important; }
             /* Show ONLY the print report */
             #print-report, #print-report * { visibility: visible !important; }
             #print-report {
-              position: fixed !important;
+              position: absolute !important;
               top: 0 !important;
               left: 0 !important;
               width: 100% !important;
               background: white !important;
+              padding: 15mm 20mm !important; 
+              box-sizing: border-box !important;
             }
-            @page { margin: 15mm 20mm; size: A4 portrait; }
+            /* margin: 0 removes browser-injected headers and footers mathematically */
+            @page { margin: 0; size: A4 portrait; }
           }
         `}} />
 
-        {/* Report content */}
-        <div style={{ fontFamily: 'Arial, sans-serif', color: '#000', background: '#fff', padding: '0' }}>
+        {/* Report content template matching user requirements */}
+        <div style={{ fontFamily: 'Arial, sans-serif', color: '#000', background: '#fff', padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+          
+          <h1 style={{ textAlign: 'center', color: '#0070c0', fontSize: '18px', margin: '15px 0 35px 0', textTransform: 'uppercase', fontWeight: 'bold' }}>BUSINESS SALES REPORT</h1>
 
-          {/* ─── Summary Table ─────────────────────────────────── */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '22px', fontSize: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', fontSize: '12px' }}>
+            <table style={{ width: '40%', borderCollapse: 'collapse', border: '1px solid #d9d9d9', height: 'fit-content' }}>
+              <tbody>
+                <tr>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px', color: '#555' }}>Period:</td>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px' }}>{periodLabel}</td>
+                </tr>
+                <tr>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px', color: '#555' }}>Generated:</td>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px' }}>{printDate}</td>
+                </tr>
+                <tr>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px', color: '#555' }}>Operator ID:</td>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px' }}>#{user ? user.username.toUpperCase() : 'SYS'}</td>
+                </tr>
+                <tr>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px', color: '#555' }}>Terminal:</td>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px' }}>POS Main</td>
+                </tr>
+                <tr>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px', color: '#555' }}>Manager:</td>
+                  <td style={{ border: '1px solid #d9d9d9', padding: '4px 8px' }}>{user?.username || 'Admin'}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', minWidth: '220px' }}>
+              <div style={{ color: '#0070c0', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', marginBottom: '4px' }}>
+                <div style={{ backgroundColor: '#fff', display: 'flex', alignItems: 'center' }}>
+                  <Logo size={24} />
+                </div>
+                Juice Bar POS
+              </div>
+              <div style={{ color: '#333' }}>Primary Business Address</div>
+              <div style={{ color: '#333' }}>Colombo, Sri Lanka</div>
+              <div style={{ color: '#333' }}>Phone: +94-11-234-5678</div>
+              <div style={{ color: '#333' }}>Fax: 555-555-5555</div>
+              <div style={{ color: '#333' }}>Email: admin@juicebar.com</div>
+            </div>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '20px' }}>
             <thead>
-              <tr style={{ background: '#f0f0f0' }}>
-                <th style={{ border: '1px solid #999', padding: '7px 10px', textAlign: 'left', width: '55%' }}>METRIC</th>
-                <th style={{ border: '1px solid #999', padding: '7px 10px', textAlign: 'right', fontWeight: 'bold' }}>ACTUAL (LKR)</th>
-                <th style={{ border: '1px solid #999', padding: '7px 10px', textAlign: 'right', fontWeight: 'bold' }}>NOTES</th>
+              <tr style={{ background: '#0070c0', color: 'white' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #0070c0', fontWeight: 'normal' }}>Date</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', border: '1px solid #0070c0', borderLeft: '1px solid #4a9bd4', fontWeight: 'normal' }}>Time</th>
+                <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #0070c0', borderLeft: '1px solid #4a9bd4', fontWeight: 'normal' }}>Invoice</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', border: '1px solid #0070c0', borderLeft: '1px solid #4a9bd4', fontWeight: 'normal' }}>Revenue</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', border: '1px solid #0070c0', borderLeft: '1px solid #4a9bd4', fontWeight: 'normal' }}>Cost</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', border: '1px solid #0070c0', borderLeft: '1px solid #4a9bd4', fontWeight: 'bold' }}>Profit</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                { label: 'Gross Revenue', val: `Rs. ${reportData.total_sales.toFixed(2)}`, note: `${reportData.num_orders} transactions` },
-                { label: 'Total Cost of Goods (COGS)', val: `Rs. ${(reportData.total_cost || 0).toFixed(2)}`, note: `${costMarginPct}% of revenue` },
-                { label: 'Gross Profit', val: `Rs. ${(reportData.total_profit || 0).toFixed(2)}`, note: `${profitMarginPct}% margin`, bold: true },
-                { label: '% Gross Profit to Revenue', val: `${profitMarginPct}%`, note: '' },
-                { label: 'Average Revenue per Transaction', val: `Rs. ${avgTicket}`, note: '' },
-                { label: 'Total Transactions (Orders)', val: reportData.num_orders.toString(), note: 'All completed orders' },
-              ].map((row, i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                  <td style={{ border: '1px solid #bbb', padding: '6px 10px', fontWeight: row.bold ? 'bold' : 'normal' }}>{row.label}</td>
-                  <td style={{ border: '1px solid #bbb', padding: '6px 10px', textAlign: 'right', fontWeight: row.bold ? 'bold' : 'normal' }}>{row.val}</td>
-                  <td style={{ border: '1px solid #bbb', padding: '6px 10px', textAlign: 'right', color: '#555', fontSize: '11px' }}>{row.note}</td>
+              {reportData.orders.map((order, i) => (
+                <tr key={order.id}>
+                  <td style={{ padding: '6px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', borderLeft: '1px solid #e0e0e0' }}>{new Date(order.timestamp).toLocaleDateString('en-GB')}</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'center', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', color: '#555' }}>{new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                  <td style={{ padding: '6px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}>{order.invoice_number}</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}>Rs. {order.total.toFixed(2)}</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', color: '#555' }}>Rs. {(order.cost || 0).toFixed(2)}</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}>Rs. {(order.profit || 0).toFixed(2)}</td>
                 </tr>
+              ))}
+              {/* Fill empty rows to make the grid look like the template if less than 8 items */}
+              {Array.from({ length: Math.max(0, 8 - reportData.orders.length) }).map((_, i) => (
+                 <tr key={`empty-${i}`}>
+                   <td style={{ padding: '13px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', borderLeft: '1px solid #e0e0e0' }}></td>
+                   <td style={{ padding: '13px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}></td>
+                   <td style={{ padding: '13px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}></td>
+                   <td style={{ padding: '13px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}></td>
+                   <td style={{ padding: '13px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}></td>
+                   <td style={{ padding: '13px 10px', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0' }}></td>
+                 </tr>
               ))}
             </tbody>
           </table>
 
-          {/* ─── Transactions Detail Table ───────────────────────── */}
-          <div style={{ marginBottom: '8px' }}>
-            <div style={{ background: '#1a237e', color: 'white', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', marginBottom: '0' }}>
-              TRANSACTION DETAIL — {reportData.orders.length} RECORDS
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
-              <thead>
-                <tr style={{ background: '#e8e8e8' }}>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'left' }}>#</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'left' }}>Invoice No.</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'center' }}>Date</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'center' }}>Time</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>Revenue (Rs.)</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>Cost (Rs.)</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>Profit (Rs.)</th>
-                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>Margin</th>
-                </tr>
-              </thead>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
+            <table style={{ width: '280px', borderCollapse: 'collapse', fontSize: '11px', border: '1px solid #d9d9d9' }}>
               <tbody>
-                {reportData.orders.map((order, i) => {
-                  const profit = order.profit ?? 0;
-                  const cost = order.cost ?? 0;
-                  const margin = order.total > 0 ? ((profit / order.total) * 100).toFixed(1) : '0.0';
-                  return (
-                    <tr key={order.id} style={{ background: i % 2 === 0 ? '#fff' : '#f9f9f9', pageBreakInside: 'avoid' }}>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', color: '#777' }}>{i + 1}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', fontFamily: 'monospace', fontSize: '10px' }}>{order.invoice_number}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center' }}>{new Date(order.timestamp).toLocaleDateString('en-GB')}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center' }}>{new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 'bold' }}>{order.total.toFixed(2)}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', color: '#b45309' }}>{cost.toFixed(2)}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', color: profit >= 0 ? '#166534' : '#991b1b' }}>{profit.toFixed(2)}</td>
-                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', color: '#555' }}>{margin}%</td>
-                    </tr>
-                  );
-                })}
-                {/* Totals row */}
-                <tr style={{ background: '#e8f4e8', fontWeight: 'bold' }}>
-                  <td colSpan={4} style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>TOTALS</td>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>{reportData.total_sales.toFixed(2)}</td>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', color: '#b45309' }}>{(reportData.total_cost || 0).toFixed(2)}</td>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', color: '#166534' }}>{(reportData.total_profit || 0).toFixed(2)}</td>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>{profitMarginPct}%</td>
+                <tr>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', fontWeight: 'bold' }}>Total Revenue</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e0e0e0' }}>Rs. {reportData.total_sales.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', fontWeight: 'bold' }}>Less COGS</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e0e0e0' }}>Rs. {(reportData.total_cost || 0).toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', fontWeight: 'bold' }}>Service/Other Fees</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: '1px solid #e0e0e0' }}>Rs. 0.00</td>
+                </tr>
+                <tr style={{ background: '#f5f9ff' }}>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', color: '#0070c0', fontWeight: 'bold', borderRight: '1px solid #e0e0e0' }}>Net Profit</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', color: '#0070c0', fontWeight: 'bold' }}>Rs. {(reportData.total_profit || 0).toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-
         </div>
       </div>
       {/* ── END PRINT TEMPLATE ── */}

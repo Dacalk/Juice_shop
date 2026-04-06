@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  UserPlus, 
   Lock, 
   User as UserIcon, 
   Shield, 
@@ -12,6 +11,7 @@ import {
   Loader2
 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
+import Logo from '../components/Logo';
 
 import { API_URL } from '../store/useAuthStore';
 
@@ -76,8 +76,8 @@ const Register = () => {
         <div className="bg-white/80 backdrop-blur-xl border border-white/50 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] rounded-[3rem] overflow-hidden">
           
           <div className="p-10 pb-6 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-2xl shadow-indigo-200 mb-6 rotate-3 transform transition-transform hover:rotate-0 hover:scale-110 cursor-pointer duration-500">
-              <UserPlus size={40} className="drop-shadow-lg" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl shadow-2xl shadow-slate-200 mb-6 rotate-3 transform transition-transform hover:rotate-0 hover:scale-110 cursor-pointer duration-500 overflow-hidden">
+              <Logo size={80} />
             </div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-tight mb-2">Join Juice Bar</h1>
             <p className="text-slate-500 font-medium">Create your credentials to access the POS terminal</p>
@@ -118,7 +118,7 @@ const Register = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Security Key</label>
                     <div className="relative group">
@@ -141,6 +141,7 @@ const Register = () => {
                       <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-300 group-focus-within:text-indigo-500 transition-colors">
                         <Shield size={18} />
                       </span>
+
                       <input
                         required
                         type="password"

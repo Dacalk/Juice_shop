@@ -43,7 +43,9 @@ const useCartStore = create((set, get) => ({
   getTotal: () => {
     return get().cartItems.reduce((sum, item) => {
       if (item.category === 'Gram Section') {
-        const unitGrams = parseInt(item.unit) || 100;
+        const unitMatch = item.unit.match(/(\d+)/);
+        let unitGrams = unitMatch ? parseInt(unitMatch[1]) : 100;
+        if (item.unit.toLowerCase().includes('kg')) unitGrams *= 1000;
         return sum + (item.price / unitGrams) * item.quantity;
       }
       return sum + (item.price * item.quantity);

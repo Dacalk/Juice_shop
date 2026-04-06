@@ -173,21 +173,22 @@ const Products = () => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left min-w-[600px]">
+        <table className="w-full text-left min-w-[600px] table-fixed">
           <thead>
             <tr className="bg-white/2">
-              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Menu Item</th>
-              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Selling Price</th>
-              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[45%]">Menu Item</th>
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[20%]">Selling Price</th>
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[20%]">
                 <span className="flex items-center justify-end gap-1.5">
                   <TrendingDown size={12} className="text-amber-400" />
                   Cost Price
                 </span>
               </th>
-              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Control</th>
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[15%]">Control</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
+
             {items.map((p) => (
               <tr key={p.id} className="hover:bg-white/2 transition-colors">
                 <td className="p-6 flex items-center gap-4">
