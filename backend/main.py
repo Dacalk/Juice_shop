@@ -23,15 +23,19 @@ class ProductCreate(BaseModel):
     unit: str = "pc"
     image: str = "🥤"
     stock: float = 0.0
+    cost_price: float = 0.0
 
 try:
     # When run as a package: python -m uvicorn backend.main:app
-    from backend.database import engine, get_db
+    from backend.database import engine, get_db, run_migrations
     from backend import models, auth
 except ImportError:
     # When run directly from backend/ folder: uvicorn main:app
-    from database import engine, get_db
+    from database import engine, get_db, run_migrations
     import models, auth
+
+# Run migrations first (adds new columns to existing DB safely)
+run_migrations()
 
 # Initialize database tables
 models.Base.metadata.create_all(bind=engine)
@@ -47,13 +51,17 @@ app = FastAPI(title="Juice Bar POS API")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Configure CORS
+# In production, set ALLOWED_ORIGINS environment variable to your frontend URL
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"], # Allow all headers for now
+    allow_headers=["*"],
 )
+
 
 # --- AUTH ROUTES ---
 @app.post("/auth/login")
@@ -168,7 +176,8 @@ async def create_product(
         category=product.category,
         unit=product.unit,
         image=product.image,
-        stock=product.stock
+        stock=product.stock,
+        cost_price=product.cost_price
     )
     db.add(new_product)
     db.commit()
@@ -295,11 +304,50 @@ async def get_daily_report(
     
     total_sales = sum(o.total for o in orders)
     num_orders = len(orders)
+
+    # --- PROFIT CALCULATION ---
+    # For each order, sum up the cost of its items based on product cost_price
+    def calc_order_cost(order):
+        cost = 0.0
+        for item in order.items:
+            if item.product:
+                cost_price = item.product.cost_price or 0.0
+                # For gram section: cost_price is per reference unit, same ratio as sell price
+                if item.product.category == "Gram Section":
+                    import re
+                    match = re.search(r"(\d+)", item.product.unit or "100")
+                    unit_grams = int(match.group(1)) if match else 100
+                    cost += (cost_price / unit_grams) * item.quantity
+                else:
+                    cost += cost_price * item.quantity
+        return cost
+
+    orders_with_profit = []
+    total_cost = 0.0
+    for o in orders:
+        order_cost = calc_order_cost(o)
+        order_profit = o.total - order_cost
+        total_cost += order_cost
+        orders_with_profit.append({
+            "id": o.id,
+            "invoice_number": o.invoice_number,
+            "total": o.total,
+            "paid": o.paid,
+            "balance": o.balance,
+            "timestamp": o.timestamp.isoformat() if o.timestamp else None,
+            "cashier_id": o.cashier_id,
+            "cost": round(order_cost, 2),
+            "profit": round(order_profit, 2),
+        })
+
+    total_profit = total_sales - total_cost
     
     return {
         "total_sales": total_sales,
+        "total_cost": round(total_cost, 2),
+        "total_profit": round(total_profit, 2),
         "num_orders": num_orders,
-        "orders": orders
+        "orders": orders_with_profit
     }
 
 # --- THERMAL PRINT PLACEHOLDER ---

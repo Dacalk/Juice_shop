@@ -44,6 +44,11 @@ body {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
+/* Global — works inside modals/overlays outside .resto-theme */
+.resto-gradient {
+  background: linear-gradient(135deg, #eaf89b 0%, #c5eef5 100%);
+}
+
 .resto-theme .resto-gradient {
   background: var(--primary-gradient);
 }
@@ -80,3 +85,4 @@ body {
   .no-print { display: none !important; }
   .print-only { display: block !important; }
 }
+

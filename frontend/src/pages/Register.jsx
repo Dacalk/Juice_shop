@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../store/useAuthStore';
+
 
 const Register = () => {
   const [formData, setFormData] = useState({ 

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+// Dynamic API URL: Uses environment variable for production, falls back to localhost for development
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 
 const useAuthStore = create((set) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,

@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../../store/useAuthStore';
+
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,7 +103,7 @@ const Users = () => {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-10 animate-scale-up">
+    <div className="w-full px-4 sm:px-6 space-y-6 sm:space-y-10 animate-scale-up">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 bg-white/5 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-3xl">
         <div className="flex items-center gap-6">

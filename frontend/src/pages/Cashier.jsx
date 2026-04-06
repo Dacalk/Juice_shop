@@ -20,7 +20,8 @@ import {
 import useAuthStore from '../store/useAuthStore';
 import useCartStore from '../store/useCartStore';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../store/useAuthStore';
+
 
 const Cashier = () => {
   const { user, logout, token } = useAuthStore();

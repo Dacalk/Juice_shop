@@ -1,24 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  ShoppingBag, 
-  DollarSign, 
+import {
+  BarChart3,
+  TrendingDown,
+  ShoppingBag,
+  DollarSign,
   Calendar,
   Download,
-  Filter,
   FileText,
   Loader2,
-  ArrowUpRight
+  ArrowUpRight,
+  Printer
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../../store/useAuthStore';
+
 
 const Reports = () => {
   const [reportData, setReportData] = useState({
     total_sales: 0,
+    total_cost: 0,
+    total_profit: 0,
     num_orders: 0,
     orders: []
   });
@@ -27,6 +30,7 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const token = useAuthStore(state => state.token);
+  const user = useAuthStore(state => state.user);
 
   useEffect(() => {
     fetchReport();
@@ -38,10 +42,9 @@ const Reports = () => {
       const params = {};
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
-
       const response = await axios.get(`${API_URL}/reports/daily`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: params
+        params
       });
       setReportData(response.data);
     } catch (err) {
@@ -54,24 +57,48 @@ const Reports = () => {
 
   const handleExport = () => {
     if (!reportData.orders || reportData.orders.length === 0) return;
+    const profitMargin = reportData.total_sales > 0
+      ? ((reportData.total_profit / reportData.total_sales) * 100).toFixed(1)
+      : '0.0';
 
-    const headers = ["Invoice", "Date", "Time", "Total (LKR)"];
-    const csvContent = [
-      headers.join(","),
-      ...reportData.orders.map(o => [
+    const summaryRows = [
+      [`"Juice Bar POS — Sales Report"`],
+      [`"Period: ${startDate || 'All'} to ${endDate || 'Current'}"`],
+      [],
+      ['"Total Revenue (LKR)"', `"${reportData.total_sales.toFixed(2)}"`],
+      ['"Total Cost (LKR)"', `"${(reportData.total_cost || 0).toFixed(2)}"`],
+      ['"Net Profit (LKR)"', `"${(reportData.total_profit || 0).toFixed(2)}"`],
+      ['"Profit Margin (%)"', `"${profitMargin}%"`],
+      ['"Total Orders"', `"${reportData.num_orders}"`],
+      [],
+    ];
+
+    const headers = ['"Invoice"', '"Date"', '"Time"', '"Revenue (LKR)"', '"Cost (LKR)"', '"Profit (LKR)"', '"Margin %"'];
+    const dataRows = reportData.orders.map(o => {
+      const revenue = o.total || 0;
+      const cost = o.cost || 0;
+      const profit = o.profit || 0;
+      const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : '0.0';
+      return [
         `"${o.invoice_number}"`,
         `"${new Date(o.timestamp).toLocaleDateString()}"`,
         `"${new Date(o.timestamp).toLocaleTimeString()}"`,
-        o.total
-      ].join(","))
-    ].join("\n");
+        revenue.toFixed(2), cost.toFixed(2), profit.toFixed(2), `"${margin}%"`
+      ].join(',');
+    });
 
-    const BOM = "\uFEFF";
+    const csvContent = [
+      ...summaryRows.map(r => r.join(',')),
+      headers.join(','),
+      ...dataRows
+    ].join('\n');
+
+    const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Report_${startDate || 'Record'}_to_${endDate || 'Current'}.csv`.replace(/\s+/g, '_'));
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ProfitReport_${startDate || 'All'}_to_${endDate || 'Now'}.csv`.replace(/\s+/g, '_'));
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -79,193 +106,286 @@ const Reports = () => {
     URL.revokeObjectURL(url);
   };
 
-  const StatCard = ({ title, value, icon: Icon, trend, colorClass }) => (
-    <div className="glass-panel p-6 sm:p-8 rounded-[2rem] border border-white/5 relative overflow-hidden group hover:bg-white/5 transition-all cursor-pointer h-full">
-      <div className={`absolute -right-4 -top-4 w-32 h-32 rounded-full opacity-10 group-hover:opacity-20 transition-opacity ${colorClass}`}></div>
-      <div className="flex items-center justify-between relative z-10 gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 sm:mb-2 truncate">{title}</p>
-          <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight break-words">{value}</h3>
-          {trend && (
-            <div className="flex items-center gap-1 mt-2 text-emerald-500 font-bold text-[9px] sm:text-[10px] uppercase tracking-tighter">
-              <TrendingUp size={12} />
-              <span className="truncate">{trend}</span>
-            </div>
-          )}
-        </div>
-        <div className={`p-3 sm:p-4 rounded-2xl bg-white/5 shadow-xl border border-white/10 group-hover:scale-110 transition-transform duration-300 shrink-0`}>
-          <Icon size={20} className={`${colorClass.replace('bg-', 'text-')} sm:w-[24px] sm:h-[24px]`} />
+  const profitMarginPct = reportData.total_sales > 0
+    ? ((reportData.total_profit / reportData.total_sales) * 100).toFixed(1)
+    : '0.0';
+
+  const costMarginPct = reportData.total_sales > 0
+    ? ((reportData.total_cost / reportData.total_sales) * 100).toFixed(1)
+    : '0.0';
+
+  const avgTicket = reportData.num_orders > 0
+    ? (reportData.total_sales / reportData.num_orders).toFixed(2)
+    : '0.00';
+
+  const periodLabel = startDate && endDate
+    ? `${startDate} to ${endDate}`
+    : startDate
+    ? `From ${startDate}`
+    : endDate
+    ? `Up to ${endDate}`
+    : `Today — ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+  const printDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // ─── Stat Card (screen only) ─────────────────────────────────────────────
+  const StatCard = ({ title, value, icon: Icon, trend, colorClass, bgClass }) => (
+    <div className="glass-panel rounded-[2rem] border border-white/5 relative overflow-hidden group hover:bg-white/5 transition-all p-5 sm:p-6 flex flex-col gap-3">
+      <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none ${bgClass || colorClass}`}></div>
+      <div className="flex items-center justify-between relative z-10">
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{title}</p>
+        <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+          <Icon size={16} className={colorClass} />
         </div>
       </div>
+      <h3 className={`text-2xl font-black tracking-tight leading-tight relative z-10 ${colorClass}`}>{value}</h3>
+      {trend && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider relative z-10">{trend}</p>}
     </div>
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1200px] mx-auto pb-12">
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/5 p-8 rounded-[3rem] border border-white/5 shadow-3xl">
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-[2rem] flex items-center justify-center text-slate-900 shadow-xl shadow-emerald-500/20 rotate-3">
-            <BarChart3 size={32} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-white tracking-tight leading-none uppercase">
-              Sales Intel
-            </h1>
-            <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-2">Real-time performance metrics for today.</p>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#282828] border border-white/5 rounded-2xl px-4 py-2 h-12">
-            <Calendar size={16} className="text-slate-500" />
-            <input 
-              type="date" 
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-transparent border-none text-xs font-bold text-white focus:ring-0 p-0 outline-none"
-              placeholder="Start Date"
-            />
-            <span className="text-slate-500">to</span>
-            <input 
-              type="date" 
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-transparent border-none text-xs font-bold text-white focus:ring-0 p-0 outline-none"
-              placeholder="End Date"
-            />
-          </div>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full pb-12 px-4 sm:px-6">
 
-          <button 
-            onClick={() => {setStartDate(''); setEndDate('');}}
-            className="h-12 px-6 bg-white/5 border border-white/10 text-white hover:bg-white/10 flex items-center justify-center rounded-2xl transition-all text-xs font-bold"
-            title="Reset Filters"
-          >
-            Reset
-          </button>
+      {/* ── PRINT TEMPLATE (hidden on screen, visible only when printing) ── */}
+      <div id="print-report" className="hidden print:block">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            /* Hide everything on the page */
+            body * { visibility: hidden !important; }
+            /* Show ONLY the print report */
+            #print-report, #print-report * { visibility: visible !important; }
+            #print-report {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 100% !important;
+              background: white !important;
+            }
+            @page { margin: 15mm 20mm; size: A4 portrait; }
+          }
+        `}} />
 
-          <button 
-            onClick={() => window.print()}
-            className="h-12 bg-white/10 text-white hover:bg-white/20 border border-white/10 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95"
-          >
-            <FileText size={16} />
-            Print Report
-          </button>
+        {/* Report content */}
+        <div style={{ fontFamily: 'Arial, sans-serif', color: '#000', background: '#fff', padding: '0' }}>
 
-          <button 
-            onClick={handleExport}
-            disabled={reportData.orders.length === 0}
-            className="h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:bg-slate-300 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95"
-          >
-            <Download size={16} />
-            Export CSV
-          </button>
-        </div>
-      </div>
+          {/* ─── Summary Table ─────────────────────────────────── */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '22px', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ background: '#f0f0f0' }}>
+                <th style={{ border: '1px solid #999', padding: '7px 10px', textAlign: 'left', width: '55%' }}>METRIC</th>
+                <th style={{ border: '1px solid #999', padding: '7px 10px', textAlign: 'right', fontWeight: 'bold' }}>ACTUAL (LKR)</th>
+                <th style={{ border: '1px solid #999', padding: '7px 10px', textAlign: 'right', fontWeight: 'bold' }}>NOTES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { label: 'Gross Revenue', val: `Rs. ${reportData.total_sales.toFixed(2)}`, note: `${reportData.num_orders} transactions` },
+                { label: 'Total Cost of Goods (COGS)', val: `Rs. ${(reportData.total_cost || 0).toFixed(2)}`, note: `${costMarginPct}% of revenue` },
+                { label: 'Gross Profit', val: `Rs. ${(reportData.total_profit || 0).toFixed(2)}`, note: `${profitMarginPct}% margin`, bold: true },
+                { label: '% Gross Profit to Revenue', val: `${profitMarginPct}%`, note: '' },
+                { label: 'Average Revenue per Transaction', val: `Rs. ${avgTicket}`, note: '' },
+                { label: 'Total Transactions (Orders)', val: reportData.num_orders.toString(), note: 'All completed orders' },
+              ].map((row, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                  <td style={{ border: '1px solid #bbb', padding: '6px 10px', fontWeight: row.bold ? 'bold' : 'normal' }}>{row.label}</td>
+                  <td style={{ border: '1px solid #bbb', padding: '6px 10px', textAlign: 'right', fontWeight: row.bold ? 'bold' : 'normal' }}>{row.val}</td>
+                  <td style={{ border: '1px solid #bbb', padding: '6px 10px', textAlign: 'right', color: '#555', fontSize: '11px' }}>{row.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4">
-          <Loader2 size={48} className="text-emerald-500 animate-spin" />
-          <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Processing Transactional Data...</p>
-        </div>
-      ) : (
-        <>
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <StatCard 
-              title="Today's Revenue" 
-              value={`Rs. ${reportData.total_sales.toFixed(2)}`} 
-              icon={DollarSign} 
-              trend="+0% vs Yesterday"
-              colorClass="bg-emerald-500"
-            />
-            <StatCard 
-              title="Daily Transaction Count" 
-              value={reportData.num_orders.toString()} 
-              icon={ShoppingBag} 
-              trend="Live Update"
-              colorClass="bg-teal-500"
-            />
-            <StatCard 
-              title="Average Ticket" 
-              value={`Rs. ${reportData.num_orders > 0 ? (reportData.total_sales / reportData.num_orders).toFixed(2) : '0.00'}`} 
-              icon={TrendingUp} 
-              colorClass="bg-sky-500"
-            />
-          </div>
-
-          {/* Today's Transactions Table */}
-          <div className="glass-panel rounded-[2.5rem] overflow-hidden mb-8 border border-white/5 shadow-2xl">
-            <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-emerald-400">
-                  <FileText size={24} />
-                </div>
-                <h2 className="text-xl font-black uppercase tracking-tight text-white">Recent Sales Activity</h2>
-              </div>
-              <button className="text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:underline">View All Records</button>
+          {/* ─── Transactions Detail Table ───────────────────────── */}
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ background: '#1a237e', color: 'white', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', marginBottom: '0' }}>
+              TRANSACTION DETAIL — {reportData.orders.length} RECORDS
             </div>
-            
-            <table className="w-full text-left">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
               <thead>
-                <tr className="bg-white/2 border-b border-white/5">
-                  <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Invoice Hash</th>
-                  <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center px-10">Time</th>
-                  <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Method</th>
-                  <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right px-12">Amount (Rs.)</th>
+                <tr style={{ background: '#e8e8e8' }}>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'left' }}>#</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'left' }}>Invoice No.</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'center' }}>Date</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'center' }}>Time</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>Revenue (Rs.)</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>Cost (Rs.)</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>Profit (Rs.)</th>
+                  <th style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>Margin</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {reportData.orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-white/5 transition-colors group cursor-pointer">
-                    <td className="p-6">
-                      <div className="flex items-center gap-3 font-bold text-white">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                        {order.invoice_number}
-                        <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
-                      </div>
-                    </td>
-                    <td className="p-6 text-center px-10">
-                      <span className="text-sm font-bold text-slate-500">
-                        {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </td>
-                    <td className="p-6">
-                      <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase text-white tracking-widest border border-white/5">
-                        CASH
-                      </span>
-                    </td>
-                    <td className="p-6 text-right px-12">
-                      <span className="text-sm font-black text-white">
-                        {order.total.toFixed(2)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {reportData.orders.map((order, i) => {
+                  const profit = order.profit ?? 0;
+                  const cost = order.cost ?? 0;
+                  const margin = order.total > 0 ? ((profit / order.total) * 100).toFixed(1) : '0.0';
+                  return (
+                    <tr key={order.id} style={{ background: i % 2 === 0 ? '#fff' : '#f9f9f9', pageBreakInside: 'avoid' }}>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', color: '#777' }}>{i + 1}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', fontFamily: 'monospace', fontSize: '10px' }}>{order.invoice_number}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center' }}>{new Date(order.timestamp).toLocaleDateString('en-GB')}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'center' }}>{new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 'bold' }}>{order.total.toFixed(2)}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', color: '#b45309' }}>{cost.toFixed(2)}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', color: profit >= 0 ? '#166534' : '#991b1b' }}>{profit.toFixed(2)}</td>
+                      <td style={{ border: '1px solid #ccc', padding: '5px 8px', textAlign: 'right', color: '#555' }}>{margin}%</td>
+                    </tr>
+                  );
+                })}
+                {/* Totals row */}
+                <tr style={{ background: '#e8f4e8', fontWeight: 'bold' }}>
+                  <td colSpan={4} style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>TOTALS</td>
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>{reportData.total_sales.toFixed(2)}</td>
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', color: '#b45309' }}>{(reportData.total_cost || 0).toFixed(2)}</td>
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right', color: '#166534' }}>{(reportData.total_profit || 0).toFixed(2)}</td>
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', textAlign: 'right' }}>{profitMarginPct}%</td>
+                </tr>
               </tbody>
             </table>
-            
-            {(reportData.orders.length === 0 || !reportData.orders) && !loading && (
-              <div className="p-24 text-center">
-                <p className="text-sm font-bold text-slate-500 italic">No transactions recorded yet for today.</p>
-              </div>
-            )}
           </div>
-        </>
-      )}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          body { background: white !important; color: black !important; }
-          .no-print, button, .flex-wrap, header { display: none !important; }
-          .glass-panel { border: none !important; background: transparent !important; box-shadow: none !important; }
-          .grid { display: block !important; }
-          .StatCard { border: 1px solid #eee !important; margin-bottom: 10px !important; }
-          table { border-collapse: collapse !important; width: 100% !important; margin-top: 20px !important; }
-          th, td { border: 1px solid #ddd !important; color: black !important; padding: 12px !important; }
-          tr { page-break-inside: avoid !important; }
-          h1, h2 { color: black !important; }
-        }
-      `}} />
+
+        </div>
+      </div>
+      {/* ── END PRINT TEMPLATE ── */}
+
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SCREEN UI (hidden when printing)
+         ══════════════════════════════════════════════════════════════════════ */}
+      <div className="no-print">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/5 p-8 rounded-[3rem] border border-white/5 shadow-3xl mb-8">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-[2rem] flex items-center justify-center text-slate-900 shadow-xl shadow-emerald-500/20 rotate-3">
+              <BarChart3 size={32} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-white tracking-tight leading-none uppercase">Sales & Profit Intel</h1>
+              <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-2">Revenue, cost & profit analytics.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 bg-[#282828] border border-white/5 rounded-2xl px-4 py-2 h-12">
+              <Calendar size={16} className="text-slate-500" />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none text-xs font-bold text-white focus:ring-0 p-0 outline-none" />
+              <span className="text-slate-500">to</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none text-xs font-bold text-white focus:ring-0 p-0 outline-none" />
+            </div>
+
+            <button onClick={() => { setStartDate(''); setEndDate(''); }}
+              className="h-12 px-6 bg-white/5 border border-white/10 text-white hover:bg-white/10 flex items-center justify-center rounded-2xl transition-all text-xs font-bold">
+              Reset
+            </button>
+
+            <button onClick={() => window.print()}
+              className="h-12 bg-white/10 text-white hover:bg-white/20 border border-white/10 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95">
+              <Printer size={16} />
+              Print Report
+            </button>
+
+            <button onClick={handleExport} disabled={reportData.orders.length === 0}
+              className="h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all active:scale-95">
+              <Download size={16} />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-32 space-y-4">
+            <Loader2 size={48} className="text-emerald-500 animate-spin" />
+            <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Processing Transactional Data...</p>
+          </div>
+        ) : (
+          <>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
+              <StatCard title="Total Revenue" value={`Rs. ${reportData.total_sales.toFixed(2)}`} icon={DollarSign}
+                trend="Gross sales in period" colorClass="text-emerald-400" bgClass="bg-emerald-500" />
+              <StatCard title="Transaction Count" value={reportData.num_orders.toString()} icon={ShoppingBag}
+                trend="Orders completed" colorClass="text-teal-400" bgClass="bg-teal-500" />
+              <StatCard title="Total Cost" value={`Rs. ${(reportData.total_cost || 0).toFixed(2)}`} icon={TrendingDown}
+                trend="Based on cost prices" colorClass="text-amber-400" bgClass="bg-amber-500" />
+              <StatCard title="Net Profit" value={`Rs. ${(reportData.total_profit || 0).toFixed(2)}`} icon={DollarSign}
+                trend={`${profitMarginPct}% margin`}
+                colorClass={(reportData.total_profit || 0) >= 0 ? 'text-lime-400' : 'text-red-400'}
+                bgClass={(reportData.total_profit || 0) >= 0 ? 'bg-lime-500' : 'bg-red-500'} />
+            </div>
+
+            {/* Transactions Table */}
+            <div className="glass-panel rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl">
+              <div className="p-8 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-emerald-400">
+                    <FileText size={24} />
+                  </div>
+                  <h2 className="text-xl font-black uppercase tracking-tight text-white">Sales Activity</h2>
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{reportData.orders.length} records</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[700px]">
+                  <thead>
+                    <tr className="bg-white/2 border-b border-white/5">
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Invoice</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Time</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Revenue</th>
+                      <th className="p-6 text-[10px] font-black text-amber-500/70 uppercase tracking-widest text-right">Cost</th>
+                      <th className="p-6 text-[10px] font-black text-lime-500/70 uppercase tracking-widest text-right">Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {reportData.orders.map((order) => {
+                      const profit = order.profit ?? 0;
+                      const cost = order.cost ?? 0;
+                      const marginPct = order.total > 0 ? ((profit / order.total) * 100).toFixed(0) : '0';
+                      return (
+                        <tr key={order.id} className="hover:bg-white/5 transition-colors group cursor-pointer">
+                          <td className="p-6">
+                            <div className="flex items-center gap-3 font-bold text-white">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                              <span className="text-sm">{order.invoice_number}</span>
+                              <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+                            </div>
+                          </td>
+                          <td className="p-6 text-center">
+                            <span className="text-sm font-bold text-slate-500">
+                              {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </td>
+                          <td className="p-6 text-right">
+                            <span className="text-sm font-black text-white">Rs. {order.total.toFixed(2)}</span>
+                          </td>
+                          <td className="p-6 text-right">
+                            <span className="text-sm font-bold text-amber-400">Rs. {cost.toFixed(2)}</span>
+                          </td>
+                          <td className="p-6 text-right">
+                            <div>
+                              <span className={`text-sm font-black ${profit >= 0 ? 'text-lime-400' : 'text-red-400'}`}>
+                                Rs. {profit.toFixed(2)}
+                              </span>
+                              <span className="block text-[9px] text-slate-500 mt-0.5">{marginPct}% margin</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {reportData.orders.length === 0 && !loading && (
+                  <div className="p-24 text-center">
+                    <p className="text-sm font-bold text-slate-500 italic">No transactions recorded for this period.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

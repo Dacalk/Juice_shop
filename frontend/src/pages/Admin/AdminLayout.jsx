@@ -82,7 +82,7 @@ const AdminLayout = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 sm:p-8 w-full print:p-0 print:max-w-none max-w-screen-2xl mx-auto">
+      <main className="flex-1 py-4 sm:py-8 px-0 w-full print:p-0">
         <Outlet />
       </main>
     </div>
