@@ -1,23 +1,31 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  Tag, 
-  ChevronRight,
-  ClipboardList,
+import {
+  Package,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Tag,
   Coffee,
   X,
   Loader2,
-  Image as ImageIcon,
-  Upload
+  LayoutGrid,
+  ClipboardList,
+  Apple,
+  CupSoda,
+  TrendingDown
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../../store/useAuthStore';
+
+const EMOJI_LIST = [
+  '🍉', '🥭', '🍎', '🍏', '🍐', '🍊', '🍋', '🍌', '🍇', '🍓', 
+  '🫐', '🍈', '🍒', '🍑', '🍍', '🥥', '🥝', '🍅', '🥑', '🥦', 
+  '🥕', '🥨', '🍘', '🥠', '🍹', '🥤', '🧋', '🍵', '☕', '🍧', 
+  '🍨', '🍦', '🍰', '🧁', '🍪', '🍩', '🥗', '🥪', '🥙'
+];
 
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,23 +35,28 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const token = useAuthStore(state => state.token);
-  // Add Form State
-  const [formData, setFormData] = useState({
+
+  const defaultForm = {
     name: '',
     price: '',
-    category: 'FruitSalad & Juice',
+    cost_price: '',
+    category: 'FruitSalad',
     unit: 'pc',
     image: '🥤'
-  });
+  };
 
-  // Edit Form State
+  const [formData, setFormData] = useState(defaultForm);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: '',
     price: '',
-    category: 'FruitSalad & Juice',
+    cost_price: '',
+    category: 'FruitSalad',
     unit: 'pc',
-    image: ''
+    image: '',
+    stock: ''
   });
 
   useEffect(() => {
@@ -56,35 +69,32 @@ const Products = () => {
       const response = await axios.get(`${API_URL}/products`);
       setProducts(response.data);
     } catch (err) {
-      setError('Failed to fetch products');
+      setError('Failed to fetch items');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_URL}/products`, formData, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+      const response = await axios.post(`${API_URL}/products`, {
+        name: formData.name,
+        price: parseFloat(formData.price),
+        cost_price: parseFloat(formData.cost_price) || 0,
+        category: formData.category,
+        unit: formData.unit,
+        image: formData.image,
+        stock: 0
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       setProducts([...products, response.data]);
       setIsAddModalOpen(false);
-      resetForm();
+      setFormData(defaultForm);
     } catch (err) {
-      setError('Failed to add product');
+      setError('Failed to create item. Transaction aborted.');
       console.error(err);
     }
   };
@@ -94,9 +104,11 @@ const Products = () => {
     setEditFormData({
       name: product.name,
       price: product.price,
+      cost_price: product.cost_price ?? '',
       category: product.category,
       unit: product.unit,
-      image: product.image
+      image: product.image,
+      stock: product.stock
     });
     setIsEditModalOpen(true);
   };
@@ -104,261 +116,363 @@ const Products = () => {
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(`${API_URL}/products/${editingProduct.id}`, editFormData, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const response = await axios.put(`${API_URL}/products/${editingProduct.id}`, {
+        ...editFormData,
+        price: parseFloat(editFormData.price),
+        cost_price: parseFloat(editFormData.cost_price) || 0,
+        stock: parseFloat(editFormData.stock) || 0
+      }, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       setProducts(products.map(p => p.id === editingProduct.id ? response.data : p));
       setIsEditModalOpen(false);
       setEditingProduct(null);
     } catch (err) {
-      setError('Failed to update product');
+      setError('Update failed.');
       console.error(err);
     }
   };
 
-  const resetForm = () => {
-    setFormData({ name: '', price: '', category: 'FruitSalad & Juice', unit: 'pc', image: '🥤' });
-  };
-
-  const handleDeleteProduct = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
     try {
-      await axios.delete(`${API_URL}/products/${id}`, {
+      await axios.delete(`${API_URL}/products/${productToDelete.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProducts(products.filter(p => p.id !== id));
+      setProducts(products.filter(p => p.id !== productToDelete.id));
+      setIsDeleteModalOpen(false);
+      setProductToDelete(null);
     } catch (err) {
-      setError('Failed to delete product - possible token issue. Try Logging Out and In.');
+      setError(err.response?.data?.detail || 'Deletion rejected. Please ensure the server is responding.');
       console.error(err);
+      setIsDeleteModalOpen(false);
     }
   };
 
-  const renderProductImage = (image) => {
-    return <span className="text-2xl">{image || '🥤'}</span>;
-  };
-
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const fruitJuiceProducts = filteredProducts.filter(p => p.category === 'FruitSalad & Juice');
-  const gramSectionProducts = filteredProducts.filter(p => p.category === 'Gram Section');
-
-  const ProductTable = ({ items, title, icon: Icon, colorClass }) => (
-    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-      <div className={`p-6 border-b border-slate-50 flex items-center justify-between bg-gradient-to-r ${colorClass} bg-opacity-5`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-xl bg-white shadow-sm border border-slate-100`}>
-            <Icon size={20} className={colorClass.split('-')[1] === 'emerald' ? 'text-emerald-500' : 'text-amber-500'} />
-          </div>
-          <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">{title}</h2>
-        </div>
-        <span className="bg-white px-3 py-1 rounded-full text-xs font-bold text-slate-400 border border-slate-100 shadow-sm">
-          {items.length} Items Total
-        </span>
+  const CostPriceLabel = ({ product }) => {
+    if (!product.cost_price && product.cost_price !== 0) return <span className="text-slate-600">—</span>;
+    const isGram = product.category === 'Gram Section';
+    return (
+      <div>
+        <span className="font-black text-sm text-amber-400">Rs. {Number(product.cost_price).toFixed(2)}</span>
+        {isGram && product.unit && (
+          <span className="block text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-widest">/ {product.unit}g</span>
+        )}
       </div>
-      
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-slate-50/30 border-b border-slate-100/50">
-            <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Detail</th>
-            <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Price (LKR)</th>
-            <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pricing Unit</th>
-            <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right px-8">Control</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-50">
-          {items.map((product) => (
-            <tr key={product.id} className="hover:bg-slate-50/50 transition-colors group">
-              <td className="p-5">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 overflow-hidden">
-                    {renderProductImage(product.image)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 leading-tight group-hover:text-primary transition-colors">{product.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-1">REF: #{product.id.toString().padStart(4, '0')}</p>
-                  </div>
-                </div>
-              </td>
-              <td className="p-5 text-sm font-black text-slate-800">
-                {typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
-              </td>
-              <td className="p-5 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-black uppercase">
-                  per {product.unit === 'pc' ? 'unit' : product.unit}
+    );
+  };
+
+  const SectionTable = ({ items, title, icon: Icon }) => (
+    <div className="glass-panel rounded-[2.5rem] overflow-hidden mb-8 border border-white/5 shadow-2xl">
+      <div className="p-8 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-[#eaf89b]">
+            <Icon size={24} />
+          </div>
+          <h2 className="text-xl font-black uppercase tracking-tight">{title}</h2>
+        </div>
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{items.length} Registered</span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[600px] table-fixed">
+          <thead>
+            <tr className="bg-white/2">
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[45%]">Menu Item</th>
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[20%]">Selling Price</th>
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[20%]">
+                <span className="flex items-center justify-end gap-1.5">
+                  <TrendingDown size={12} className="text-amber-400" />
+                  Cost Price
                 </span>
-                {product.unit !== 'pc' && <span className="text-[10px] text-emerald-500 font-bold italic">Weight-based</span>}
-              </td>
-              <td className="p-5 text-right px-8">
-                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                  <button 
-                    onClick={() => handleEditClick(product)}
-                    className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all" title="Edit"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteProduct(product.id)}
-                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </td>
+              </th>
+              <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[15%]">Control</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+
+            {items.map((p) => (
+              <tr key={p.id} className="hover:bg-white/2 transition-colors">
+                <td className="p-6 flex items-center gap-4">
+                  <span className="text-3xl grayscale-[0.5] hover:grayscale-0 transition-all">{p.image || '🥤'}</span>
+                  <div>
+                    <p className="font-extrabold text-sm">{p.name}</p>
+                    <p className="text-[10px] font-bold text-slate-500">ID: {p.id}</p>
+                  </div>
+                </td>
+                <td className="p-6 text-right font-black text-sm text-[#eaf89b]">
+                  Rs. {Number(p.price).toFixed(2)}
+                  {p.category === 'Gram Section' && p.unit && (
+                    <span className="block text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-widest">/ {p.unit}g</span>
+                  )}
+                </td>
+                <td className="p-6 text-right">
+                  <CostPriceLabel product={p} />
+                </td>
+                <td className="p-6 text-right space-x-2">
+                  <button onClick={() => handleEditClick(p)} className="p-2 text-slate-400 hover:text-white transition-colors"><Edit2 size={16} /></button>
+                  <button onClick={() => { setProductToDelete(p); setIsDeleteModalOpen(true); }} className="p-2 text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
+  // Shared input class
+  const inputCls = "w-full h-14 px-6 bg-white/5 border border-white/10 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-amber-500/30 transition-all";
+  const labelCls = "text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-2";
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1200px] mx-auto pb-12">
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-orange-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-primary/20 rotate-3">
-            <ClipboardList size={32} />
+    <div className="w-full px-4 sm:px-6 space-y-6 sm:space-y-10 animate-scale-up">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 bg-white/5 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-3xl">
+        <div className="flex items-center gap-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#eaf89b] to-[#c5eef5] rounded-[2rem] flex items-center justify-center text-slate-900 shadow-xl shadow-lime-500/20 rotate-3">
+            <ClipboardList size={36} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-none">
-              Menu Inventory
-            </h1>
-            <p className="text-slate-500 text-sm mt-2 font-medium">Real-time management for your local store.</p>
+            <h1 className="text-4xl font-black uppercase tracking-tight">Main Catalog</h1>
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Configure your offerings and inventory</p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="relative group">
-            <Search size={18} className="absolute inset-y-0 left-4 my-auto text-slate-400 group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text"
-              placeholder="Quick search..."
-              className="w-64 input pl-12 border-slate-200 bg-slate-50 hover:bg-slate-100 focus:bg-white transition-all rounded-2xl h-14"
+
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="relative group flex-1">
+            <Search className="absolute left-5 inset-y-0 my-auto text-slate-500 group-focus-within:text-white" size={18} />
+            <input
+              placeholder="Filter items..."
+              className="h-14 pl-14 pr-6 bg-[#282828] border border-white/5 rounded-2xl outline-none focus:ring-2 focus:ring-lime-500/20 transition-all font-bold w-full md:w-64"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button 
+          <button
             onClick={() => setIsAddModalOpen(true)}
-            className="h-14 bg-primary text-white hover:bg-black px-8 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2 transition-all active:scale-95"
+            className="h-14 bg-white text-slate-900 px-8 sm:px-10 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#eaf89b] transition-all flex items-center justify-center gap-3 whitespace-nowrap"
           >
-            <Plus size={20} />
-            Add Item
+            <Plus size={20} /> <span className="hidden sm:inline">New Item</span><span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4">
-          <Loader2 size={48} className="text-primary animate-spin" />
-          <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Syncing High-Res Content...</p>
-        </div>
+        <div className="py-40 text-center"><Loader2 size={40} className="animate-spin text-lime-500 mx-auto" /></div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          <ProductTable 
-            items={fruitJuiceProducts} 
-            title="FruitSalad & Juice Section" 
-            icon={Coffee}
-            colorClass="from-emerald-50 to-teal-50"
-          />
-
-          <ProductTable 
-            items={gramSectionProducts} 
-            title="Gram Section (Savories)" 
-            icon={Tag}
-            colorClass="from-amber-50 to-orange-50"
-          />
+        <div className="flex flex-col gap-8">
+          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('FruitSalad'))} title="FruitSalad Menu" icon={Apple} />
+          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Juice'))} title="Juice Menu" icon={CupSoda} />
+          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Gram'))} title="Gram Section" icon={Tag} />
+          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Other'))} title="Other Items" icon={Package} />
         </div>
       )}
 
-      {/* Add Product Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">New Menu Item</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"><X size={20} /></button>
+      {/* Notification Toast */}
+      {error && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] bg-red-500 text-white px-8 py-4 rounded-2xl font-bold text-sm shadow-xl animate-in slide-in-from-bottom-10 fade-in duration-300 flex items-center gap-3">
+          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+          {error}
+          <button onClick={() => setError('')} className="ml-4 opacity-50 hover:opacity-100">✕</button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-[#000]/60 backdrop-blur-md" onClick={() => setIsDeleteModalOpen(false)}></div>
+          <div className="relative bg-[#202020] w-full max-w-sm rounded-[2.5rem] border border-white/10 overflow-hidden shadow-3xl animate-scale-up">
+            <div className="p-10 text-center">
+              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tight mb-2">Delete Item?</h3>
+              <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                Are you sure you want to permanently remove <span className="text-white">"{productToDelete?.name}"</span>? This action cannot be undone.
+              </p>
             </div>
-            <form onSubmit={handleAddProduct} className="p-8 space-y-6">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Food Emoji</label>
-                <input required className="input rounded-2xl text-2xl text-center" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} placeholder="🥤" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name</label>
-                <input required className="input rounded-2xl" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
-                <select className="input rounded-2xl" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
-                  <option value="FruitSalad & Juice">Fruitsalad and Juice</option>
-                  <option value="Gram Section">Gram Section</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price (LKR)</label>
-                  <input required type="number" className="input rounded-2xl" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
+            <div className="flex border-t border-white/5">
+              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-white/2 transition-colors border-r border-white/5">Cancel</button>
+              <button onClick={handleDeleteProduct} className="flex-1 py-6 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-colors">Confirm Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-[#121212]/80 backdrop-blur-xl" onClick={() => setIsAddModalOpen(false)}></div>
+          <div className="relative bg-[#202020] w-full max-w-md rounded-[3rem] border border-white/5 overflow-hidden animate-scale-up max-h-[90vh] overflow-y-auto">
+            <div className="p-10 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#202020] z-10">
+              <h3 className="text-2xl font-black uppercase tracking-tight">Add Food Item</h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+            </div>
+            <form onSubmit={handleAddProduct} className="p-10 space-y-6">
+               {/* Icon Selection */}
+                <div className="space-y-4">
+                  <label className={labelCls}>Select Icon</label>
+                  <div className="grid grid-cols-6 gap-2 p-4 bg-white/5 border border-white/10 rounded-3xl max-h-48 overflow-y-auto custom-scrollbar">
+                    {EMOJI_LIST.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setFormData({...formData, image: emoji})}
+                        className={`text-2xl p-2 rounded-xl transition-all hover:bg-white/10 ${formData.image === emoji ? 'bg-amber-500/20 ring-2 ring-amber-500/50 scale-110' : ''}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                <div className="space-y-2">
+                  <label className={labelCls}>Item Label</label>
+                  <input required className={inputCls} placeholder="e.g. Fresh Orange Juice" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+                </div>
+
+              {/* Category + Unit/Price */}
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pricing Unit</label>
-                  <select className="input rounded-2xl" value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})}>
-                    <option value="pc">Per Unit</option>
-                    <option value="10g">10g</option><option value="50g">50g</option><option value="100g">100g</option><option value="500g">500g</option><option value="1kg">1kg</option>
+                  <label className={labelCls}>Category</label>
+                  <select className={`${inputCls} appearance-none`} value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value, unit: e.target.value === 'Gram Section' ? '100' : 'pc'})}>
+                    <option value="FruitSalad" className="bg-[#202020]">FruitSalad</option>
+                    <option value="Juice" className="bg-[#202020]">Juice</option>
+                    <option value="Gram Section" className="bg-[#202020]">Gram Section</option>
+                    <option value="Other" className="bg-[#202020]">Other</option>
                   </select>
                 </div>
+                {formData.category === 'Gram Section' ? (
+                  <div>
+                    <label className={labelCls}>Ref. Grams (e.g. 100)</label>
+                    <input type="number" required className={`${inputCls} text-[#eaf89b]`} value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} />
+                  </div>
+                ) : (
+                  <div>
+                    <label className={labelCls}>Selling Price (Rs.)</label>
+                    <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
+                  </div>
+                )}
               </div>
-              <button type="submit" className="w-full h-14 bg-primary text-white rounded-2xl font-black uppercase text-xs tracking-widest">Add Item</button>
+
+              {/* Gram Section: price */}
+              {formData.category === 'Gram Section' && (
+                <div>
+                  <label className={labelCls}>Selling Price for {formData.unit || 'X'}g (Rs.)</label>
+                  <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
+                </div>
+              )}
+
+              {/* Cost Price */}
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl border border-amber-500/20 pointer-events-none"></div>
+                <div className="p-5 rounded-2xl bg-amber-500/5">
+                  <label className="text-[10px] font-black text-amber-400 uppercase tracking-widest block mb-2 px-2 flex items-center gap-2">
+                    <TrendingDown size={12} /> Cost Price
+                    {formData.category === 'Gram Section'
+                      ? ` per ${formData.unit || 'X'}g (Rs.)`
+                      : ' per unit (Rs.)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full h-14 px-6 bg-white/5 border border-amber-500/20 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-amber-500/40 transition-all text-amber-400"
+                    value={formData.cost_price}
+                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+                  />
+                  <p className="text-[9px] text-slate-500 mt-2 px-2">Used to calculate profit in reports. Leave 0 if unknown.</p>
+                </div>
+              </div>
+
+              <button className="w-full h-16 resto-gradient text-slate-900 rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl">Finalize Registry</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Edit Product Modal */}
+      {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Modify Item</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"><X size={20} /></button>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-[#121212]/80 backdrop-blur-xl" onClick={() => setIsEditModalOpen(false)}></div>
+          <div className="relative bg-[#202020] w-full max-w-md rounded-[3rem] border border-white/5 overflow-hidden animate-scale-up max-h-[90vh] overflow-y-auto">
+            <div className="p-10 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#202020] z-10">
+              <h3 className="text-2xl font-black uppercase tracking-tight">Edit Registry #{editingProduct?.id}</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
             </div>
-            <form onSubmit={handleUpdateProduct} className="p-8 space-y-6">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Food Emoji</label>
-                <input required className="input rounded-2xl text-2xl text-center" value={editFormData.image} onChange={(e) => setEditFormData({...editFormData, image: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name</label>
-                <input required className="input rounded-2xl" value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
-                <select className="input rounded-2xl" value={editFormData.category} onChange={(e) => setEditFormData({...editFormData, category: e.target.value})}>
-                  <option value="FruitSalad & Juice">Fruitsalad and Juice</option>
-                  <option value="Gram Section">Gram Section</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price (LKR)</label>
-                  <input required type="number" className="input rounded-2xl" value={editFormData.price} onChange={(e) => setEditFormData({...editFormData, price: e.target.value})} />
+            <form onSubmit={handleUpdateProduct} className="p-10 space-y-6">
+               {/* Icon Selection */}
+                <div className="space-y-4">
+                  <label className={labelCls}>Update Icon</label>
+                  <div className="grid grid-cols-6 gap-2 p-4 bg-white/5 border border-white/10 rounded-3xl max-h-48 overflow-y-auto custom-scrollbar">
+                    {EMOJI_LIST.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setEditFormData({...editFormData, image: emoji})}
+                        className={`text-2xl p-2 rounded-xl transition-all hover:bg-white/10 ${editFormData.image === emoji ? 'bg-amber-500/20 ring-2 ring-amber-500/50 scale-110' : ''}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pricing Unit</label>
-                  <select className="input rounded-2xl" value={editFormData.unit} onChange={(e) => setEditFormData({...editFormData, unit: e.target.value})}>
-                    <option value="pc">Per Unit</option>
-                    <option value="10g">10g</option><option value="50g">50g</option><option value="100g">100g</option><option value="500g">500g</option><option value="1kg">1kg</option>
+
+                <div className="space-y-2">
+                  <label className={labelCls}>Item Label</label>
+                  <input required className={inputCls} value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
+                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className={labelCls}>Selling Price (Rs.)</label>
+                  <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={editFormData.price} onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <label className={labelCls}>Category</label>
+                  <select className={`${inputCls} appearance-none`} value={editFormData.category} onChange={(e) => setEditFormData({...editFormData, category: e.target.value, unit: e.target.value === 'Gram Section' ? (editFormData.unit === 'pc' ? '100' : editFormData.unit) : 'pc'})}>
+                    <option value="FruitSalad" className="bg-[#202020]">FruitSalad</option>
+                    <option value="Juice" className="bg-[#202020]">Juice</option>
+                    <option value="Gram Section" className="bg-[#202020]">Gram Section</option>
+                    <option value="Other" className="bg-[#202020]">Other</option>
                   </select>
                 </div>
               </div>
-              <button type="submit" className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest">Update Item</button>
+              {editFormData.category === 'Gram Section' && (
+                <div className="space-y-2">
+                  <label className={labelCls}>Reference Weight (Grams)</label>
+                  <input type="number" required className={`${inputCls} text-[#eaf89b]`} value={editFormData.unit} onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })} />
+                </div>
+              )}
+
+              {/* Cost Price Edit */}
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl border border-amber-500/20 pointer-events-none"></div>
+                <div className="p-5 rounded-2xl bg-amber-500/5">
+                  <label className="text-[10px] font-black text-amber-400 uppercase tracking-widest block mb-2 px-2 flex items-center gap-2">
+                    <TrendingDown size={12} /> Cost Price
+                    {editFormData.category === 'Gram Section'
+                      ? ` per ${editFormData.unit || 'X'}g (Rs.)`
+                      : ' per unit (Rs.)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="w-full h-14 px-6 bg-white/5 border border-amber-500/20 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-amber-500/40 transition-all text-amber-400"
+                    value={editFormData.cost_price}
+                    onChange={(e) => setEditFormData({ ...editFormData, cost_price: e.target.value })}
+                  />
+                  <p className="text-[9px] text-slate-500 mt-2 px-2">Used to calculate profit in reports.</p>
+                </div>
+              </div>
+
+              <button className="w-full h-16 resto-gradient text-slate-900 rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl">Update Records</button>
             </form>
           </div>
         </div>

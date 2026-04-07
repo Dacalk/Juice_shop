@@ -1,24 +1,35 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 import os
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel
+from typing import Optional
+from dotenv import load_dotenv
 
-# Create backend directory if it doesn't exist
-if not os.path.exists('backend'):
-    os.makedirs('backend')
+# Load .env file
+load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./backend/pos.db"
+# MongoDB Connection String
+# ONLY from environment variables (no hardcoded fallback here)
+MONGODB_URL = os.getenv("MONGODB_URL")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "juice_shop_pos")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if not MONGODB_URL:
+    raise ValueError("ERROR: MONGODB_URL environment variable is NOT set. Please set it in your .env file.")
 
-Base = declarative_base()
+client = AsyncIOMotorClient(MONGODB_URL)
+db = client[DATABASE_NAME]
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    """Dependency that returns the MongoDB database instance."""
+    return db
+
+def run_migrations():
+    """
+    MongoDB is schema-less, but we can use this for initial 
+    index creation or data seeding if needed.
+    """
+    print(f"[Database] Connected to: {DATABASE_NAME}")
+
+# Collections
+users_collection = db["users"]
+products_collection = db["products"]
+orders_collection = db["orders"]

@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "backend/api/index.py"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "backend/uploads/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "frontend/dist/$1"
+    }
+  ],
+  "functions": {
+    "backend/api/index.py": {
+      "runtime": "vercel-python@0.0.1"
+    }
+  },
+  "cleanUrls": true
+}

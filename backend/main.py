@@ -1,312 +1,326 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, File, UploadFile, Form
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import datetime, timedelta, date, time
 from typing import List, Optional
 import json
 import os
 import shutil
+import uuid
 
 from pydantic import BaseModel
+from bson import ObjectId
+from dotenv import load_dotenv
 
+# Load .env file
+load_dotenv()
+
+
+# --- MODELS & DATABASE ---
+try:
+    from database import get_db, run_migrations
+    import models, auth
+except ImportError:
+    from backend.database import get_db, run_migrations
+    from backend import models, auth
+
+app = FastAPI(title="Juice Bar POS API (MongoDB)")
+
+# Run migrations (initial setup)
+run_migrations()
+
+# --- UPLOADS STORAGE ---
+# Vercel filesystem is read-only. For local dev, we use "uploads".
+# For production, /tmp is writable but transient.
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# --- CORS ---
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- HELPER SCHEMAS ---
 class UserCreate(BaseModel):
     username: str
     password: str
     role: str = "cashier"
 
-try:
-    # When run as a package: python -m uvicorn backend.main:app
-    from backend.database import engine, get_db
-    from backend import models, auth
-except ImportError:
-    # When run directly from backend/ folder: uvicorn main:app
-    from database import engine, get_db
-    import models, auth
+class ProductCreate(BaseModel):
+    name: str
+    price: float
+    category: str
+    unit: str = "pc"
+    image: str = "🥤"
+    stock: float = 0.0
+    cost_price: float = 0.0
 
-# Initialize database tables
-models.Base.metadata.create_all(bind=engine)
+# --- ROUTES ---
 
-# Ensure uploads directory exists
-# Ensure uploads directory exists relative to this file
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+@app.get("/health")
+async def health_check(db = Depends(get_db)):
+    try:
+        # Check if we can ping the database
+        await db.command("ping")
+        return {"status": "healthy", "database": "connected", "type": "mongodb"}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
 
-app = FastAPI(title="Juice Bar POS API")
+# --- AUTH ---
 
-# Mount Static Files
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # In production, specify frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "Accept"], # Explicitly allow common headers
-)
-
-# --- AUTH ROUTES ---
 @app.post("/auth/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
-    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
+    user_dict = await db["users"].find_one({"username": form_data.username})
+    if not user_dict or not auth.verify_password(form_data.password, user_dict["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = auth.create_access_token(data={"sub": user.username})
+    access_token = auth.create_access_token(data={"sub": user_dict["username"]})
     return {
         "access_token": access_token, 
         "token_type": "bearer",
-        "user": {"username": user.username, "role": user.role}
+        "user": {"username": user_dict["username"], "role": user_dict["role"]}
     }
 
-# --- PUBLIC REGISTRATION ROUTE ---
 @app.post("/auth/register")
-async def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    # Check if user already exists
-    if db.query(models.User).filter(models.User.username == user.username).first():
+async def register_user(user: UserCreate, db = Depends(get_db)):
+    if await db["users"].find_one({"username": user.username}):
         raise HTTPException(status_code=400, detail="Username already registered")
-    new_user = models.User(
-        username=user.username,
-        hashed_password=auth.get_password_hash(user.password),
-        role=user.role
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    # Auto-login after registration
-    access_token = auth.create_access_token(data={"sub": new_user.username})
+    
+    new_user = {
+        "username": user.username,
+        "hashed_password": auth.get_password_hash(user.password),
+        "role": user.role
+    }
+    result = await db["users"].insert_one(new_user)
+    
+    access_token = auth.create_access_token(data={"sub": user.username})
     return {
-        "id": new_user.id,
-        "username": new_user.username,
-        "role": new_user.role,
+        "id": str(result.inserted_id),
+        "username": user.username,
+        "role": user.role,
         "access_token": access_token,
         "token_type": "bearer"
     }
 
-# --- USER MANAGEMENT ---
-@app.get("/users", response_model=List[dict])
-async def get_users(db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    users = db.query(models.User).all()
-    # Mask password hashes for privacy
-    return [{"id": u.id, "username": u.username, "role": u.role} for u in users]
+# --- USERS ---
+
+@app.get("/users")
+async def get_users(db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    cursor = db["users"].find()
+    users = await cursor.to_list(length=100)
+    return [{"id": str(u["_id"]), "username": u["username"], "role": u["role"]} for u in users]
 
 @app.post("/users")
-async def create_user(user: UserCreate, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    # Check if user already exists
-    if db.query(models.User).filter(models.User.username == user.username).first():
+async def create_user(user: UserCreate, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    if await db["users"].find_one({"username": user.username}):
         raise HTTPException(status_code=400, detail="Username already registered")
     
-    new_user = models.User(
-        username=user.username,
-        hashed_password=auth.get_password_hash(user.password),
-        role=user.role
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"id": new_user.id, "username": new_user.username, "role": new_user.role}
+    new_user = {
+        "username": user.username,
+        "hashed_password": auth.get_password_hash(user.password),
+        "role": user.role
+    }
+    result = await db["users"].insert_one(new_user)
+    return {"id": str(result.inserted_id), "username": user.username, "role": user.role}
 
 @app.put("/users/{user_id}")
-async def update_user(user_id: int, user_update: dict, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not db_user:
+async def update_user(user_id: str, user_update: dict, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    update_data = {}
+    if "username" in user_update: update_data["username"] = user_update["username"]
+    if "role" in user_update: update_data["role"] = user_update["role"]
+    if "password" in user_update and user_update["password"]:
+        update_data["hashed_password"] = auth.get_password_hash(user_update["password"])
+    
+    result = await db["users"].update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    if 'username' in user_update:
-        db_user.username = user_update['username']
-    if 'role' in user_update:
-        db_user.role = user_update['role']
-    if 'password' in user_update and user_update['password']:
-        db_user.hashed_password = auth.get_password_hash(user_update['password'])
-        
-    db.commit()
-    db.refresh(db_user)
-    return {"id": db_user.id, "username": db_user.username, "role": db_user.role}
+    
+    updated = await db["users"].find_one({"_id": ObjectId(user_id)})
+    return {"id": str(updated["_id"]), "username": updated["username"], "role": updated["role"]}
 
 @app.delete("/users/{user_id}")
-async def delete_user(user_id: int, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    # Prevent self-deletion
-    if db_user.username == current_user.username:
-        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+async def delete_user(user_id: str, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    if current_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
-    db.delete(db_user)
-    db.commit()
+    result = await db["users"].delete_one({"_id": ObjectId(user_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
     return {"message": "User deleted successfully"}
 
-# --- PRODUCT ROUTES ---
+# --- PRODUCTS ---
+
 @app.get("/products")
-async def get_products(db: Session = Depends(get_db)):
-    return db.query(models.Product).all()
+async def get_products(db = Depends(get_db)):
+    cursor = db["products"].find()
+    products = await cursor.to_list(length=1000)
+    for p in products:
+        p["id"] = str(p["_id"])
+        del p["_id"]
+    return products
 
 @app.post("/products")
-async def create_product(
-    name: str = Form(...),
-    price: float = Form(...),
-    category: str = Form(...),
-    unit: str = Form(...),
-    image: str = Form("🥤"), # Default emoji
-    db: Session = Depends(get_db), 
-    current_user = Depends(auth.check_admin)
-):
-    new_product = models.Product(
-        name=name,
-        price=price,
-        category=category,
-        unit=unit,
-        image=image
-    )
-    db.add(new_product)
-    db.commit()
-    db.refresh(new_product)
+async def create_product(product: ProductCreate, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    new_product = product.dict()
+    result = await db["products"].insert_one(new_product)
+    new_product["id"] = str(result.inserted_id)
+    del new_product["_id"]
     return new_product
 
 @app.put("/products/{product_id}")
-async def update_product(product_id: int, product_update: dict, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not db_product:
+async def update_product(product_id: str, product_update: dict, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    if "id" in product_update: del product_update["id"]
+    result = await db["products"].update_one({"_id": ObjectId(product_id)}, {"$set": product_update})
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    for key, value in product_update.items():
-        setattr(db_product, key, value)
-    
-    db.commit()
-    db.refresh(db_product)
-    return db_product
+    updated = await db["products"].find_one({"_id": ObjectId(product_id)})
+    updated["id"] = str(updated["_id"])
+    del updated["_id"]
+    return updated
 
 @app.delete("/products/{product_id}")
-async def delete_product(product_id: int, db: Session = Depends(get_db), current_user = Depends(auth.check_admin)):
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not db_product:
+async def delete_product(product_id: str, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    result = await db["products"].delete_one({"_id": ObjectId(product_id)})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    db.delete(db_product)
-    db.commit()
     return {"message": "Product deleted successfully"}
 
-# --- ORDER ROUTES ---
+# --- ORDERS ---
+
 @app.post("/orders")
-async def create_order(order_data: dict, db: Session = Depends(get_db), current_user = Depends(auth.get_current_user)):
-    # Generate Invoice Number (Simplified: TIMESTAMP + RANDOM)
-    import uuid
-    import datetime
+async def create_order(order_data: dict, db = Depends(get_db), current_user = Depends(auth.get_current_user)):
+    inv_num = f"INV-{datetime.now().strftime('%Y%m%d%H%M')}-{str(uuid.uuid4())[:4].upper()}"
     
-    inv_num = f"INV-{datetime.datetime.now().strftime('%Y%m%d%H%M')}-{str(uuid.uuid4())[:4].upper()}"
-    
-    new_order = models.Order(
-        invoice_number=inv_num,
-        total=order_data['total'],
-        paid=order_data['paid'],
-        balance=order_data['balance'],
-        cashier_id=current_user.id
-    )
-    db.add(new_order)
-    db.flush() # Get ID before items
+    # In MongoDB, we store the full order with its items embedded
+    total = 0.0
+    processed_items = []
     
     for item in order_data['items']:
-        new_item = models.OrderItem(
-            order_id=new_order.id,
-            product_id=item['product_id'],
-            quantity=item['quantity'],
-            price=item['price']
+        product = await db["products"].find_one({"_id": ObjectId(item['product_id'])})
+        if not product: continue
+        
+        # Calculate Price
+        quantity = item['quantity']
+        item_price = product['price']
+        
+        if product['category'] == "Gram Section":
+            import re
+            match = re.search(r"(\d+)", product.get('unit', '100'))
+            unit_grams = int(match.group(1)) if match else 100
+            price_per_item = (item_price / unit_grams) * quantity
+        else:
+            price_per_item = item_price * quantity
+            
+        total += price_per_item
+        processed_items.append({
+            "product_id": item['product_id'],
+            "name": product['name'],
+            "quantity": quantity,
+            "price": round(price_per_item, 2)
+        })
+        
+        # Deduct Stock
+        await db["products"].update_one(
+            {"_id": ObjectId(item['product_id'])},
+            {"$inc": {"stock": -quantity}}
         )
-        db.add(new_item)
     
-    db.commit()
-    db.refresh(new_order)
+    new_order = {
+        "invoice_number": inv_num,
+        "total": round(total, 2),
+        "paid": order_data['paid'],
+        "balance": round(order_data['paid'] - total, 2),
+        "timestamp": datetime.utcnow(),
+        "cashier_id": str(current_user.id),
+        "items": processed_items
+    }
+    
+    result = await db["orders"].insert_one(new_order)
+    new_order["id"] = str(result.inserted_id)
+    del new_order["_id"]
     return new_order
 
 @app.get("/reports/daily")
 async def get_daily_report(
     start_date: Optional[str] = None, 
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db), 
+    db = Depends(get_db), 
     current_user = Depends(auth.check_admin)
 ):
-    from datetime import datetime, date, time
-    
-    query = db.query(models.Order)
-    
+    query = {}
     if start_date:
-        try:
-            start_dt = datetime.combine(date.fromisoformat(start_date), time.min)
-            query = query.filter(models.Order.timestamp >= start_dt)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
-            
+        start_dt = datetime.combine(date.fromisoformat(start_date), time.min)
+        query["timestamp"] = {"$gte": start_dt}
     if end_date:
-        try:
-            end_dt = datetime.combine(date.fromisoformat(end_date), time.max)
-            query = query.filter(models.Order.timestamp <= end_dt)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        end_dt = datetime.combine(date.fromisoformat(end_date), time.max)
+        if "timestamp" in query:
+            query["timestamp"]["$lte"] = end_dt
+        else:
+            query["timestamp"] = {"$lte": end_dt}
             
     if not start_date and not end_date:
-        # Default to today if no filters provided
-        today = date.today()
-        query = query.filter(models.Order.timestamp >= today)
+        # Default to today
+        today = datetime.combine(date.today(), time.min)
+        query["timestamp"] = {"$gte": today}
         
-    orders = query.order_by(models.Order.timestamp.desc()).all()
+    cursor = db["orders"].find(query).sort("timestamp", -1)
+    orders = await cursor.to_list(length=1000)
     
-    total_sales = sum(o.total for o in orders)
+    # Process for response
+    total_sales = sum(o["total"] for o in orders)
     num_orders = len(orders)
     
+    # Simplify for response
+    for o in orders:
+        o["id"] = str(o["_id"])
+        del o["_id"]
+        o["timestamp"] = o["timestamp"].isoformat()
+        
     return {
         "total_sales": total_sales,
         "num_orders": num_orders,
         "orders": orders
     }
 
-# --- THERMAL PRINT PLACEHOLDER ---
-@app.post("/print")
-async def print_receipt(receipt_data: dict, current_user = Depends(auth.get_current_user)):
-    # This is where thermal printer ESC/POS logic would go
-    print(f"--- THERMAL PRINT REQUEST FROM {current_user.username} ---")
-    print(json.dumps(receipt_data, indent=2))
-    return {"status": "printed", "message": "Receipt sent to printer spooler"}
+# --- SEED ---
 
-# --- SEED DATA (RUN ONCE) ---
-@app.post("/seed")
-async def seed_db(db: Session = Depends(get_db)):
-    # Check if admin exists
-    if db.query(models.User).filter(models.User.username == "admin").first():
+@app.get("/seed")
+async def seed_db(db = Depends(get_db)):
+    if await db["users"].find_one({"username": "admin"}):
         return {"message": "Database already seeded"}
     
-    # Create Admin
-    admin_user = models.User(
-        username="admin", 
-        hashed_password=auth.get_password_hash("admin123"), 
-        role="admin"
-    )
-    db.add(admin_user)
+    # Admin & Cashier
+    await db["users"].insert_one({
+        "username": "admin", 
+        "hashed_password": auth.get_password_hash("admin123"), 
+        "role": "admin"
+    })
+    await db["users"].insert_one({
+        "username": "cashier", 
+        "hashed_password": auth.get_password_hash("cashier123"), 
+        "role": "cashier"
+    })
     
-    # Create Cashier
-    cashier_user = models.User(
-        username="cashier", 
-        hashed_password=auth.get_password_hash("cashier123"), 
-        role="cashier"
-    )
-    db.add(cashier_user)
-    
-    # Create Sample Products
+    # Products
     products = [
-        {"name": "Mixed Fruit Juice", "price": 450, "category": "Fruit & Juice", "unit": "pc", "image": "🍉"},
-        {"name": "Mango Delight", "price": 550, "category": "Fruit & Juice", "unit": "pc", "image": "🥭"},
-        {"name": "Spicy Murukku", "price": 120, "category": "Gram Section", "unit": "g", "image": "🥨"},
-        {"name": "Sweet Murukku", "price": 150, "category": "Gram Section", "unit": "g", "image": "🍩"}
+        {"name": "Mixed Fruit Juice", "price": 450, "category": "FruitSalad & Juice", "unit": "pc", "image": "🍉", "stock": 50},
+        {"name": "Mango Delight", "price": 550, "category": "FruitSalad & Juice", "unit": "pc", "image": "🥭", "stock": 50},
+        {"name": "Spicy Murukku", "price": 120, "category": "Gram Section", "unit": "100g", "image": "🥨", "stock": 5000},
+        {"name": "Sweet Murukku", "price": 150, "category": "Gram Section", "unit": "100g", "image": "🍩", "stock": 5000}
     ]
-    for p in products:
-        db.add(models.Product(**p))
-        
-    db.commit()
+    await db["products"].insert_many(products)
+    
     return {"message": "Seed successful: Created admin/admin123 and cashier/cashier123"}

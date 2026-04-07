@@ -13,16 +13,7 @@ const AdminHome = () => (
   <Reports />
 );
 
-const POS = () => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold">Cashier POS</h1>
-    <p>Welcome, Cashier! Start taking orders.</p>
-    <button 
-      onClick={() => window.location.href = '/'} 
-      className="mt-4 btn btn-primary"
-    >Logout</button>
-  </div>
-);
+import Cashier from './pages/Cashier';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -57,7 +48,7 @@ function App() {
         {/* Cashier Routes */}
         <Route path="/pos/*" element={
           <ProtectedRoute allowedRole="cashier">
-            <POS />
+            <Cashier />
           </ProtectedRoute>
         } />
 
