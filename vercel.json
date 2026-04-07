@@ -3,23 +3,23 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "api/index.py"
+      "destination": "/api/index.py"
     },
     {
       "source": "/uploads/(.*)",
-      "destination": "backend/uploads/$1"
+      "destination": "/backend/uploads/$1"
     },
     {
       "source": "/assets/(.*)",
-      "destination": "frontend/dist/assets/$1"
+      "destination": "/frontend/dist/assets/$1"
     },
     {
       "source": "/favicon.ico",
-      "destination": "frontend/dist/favicon.ico"
+      "destination": "/frontend/dist/favicon.ico"
     },
     {
       "source": "/((?!api|uploads|assets).*)",
-      "destination": "frontend/dist/index.html"
+      "destination": "/frontend/dist/index.html"
     }
   ],
   "cleanUrls": true
