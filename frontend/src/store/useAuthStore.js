@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import axios from 'axios';
 
 // Dynamic API URL: Uses environment variable for production, falls back to relative /api for production build on Vercel, or localhost for development
-export const API_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:8000');
+export const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '/api' : '*');
 
 
 const useAuthStore = create((set) => ({
@@ -28,19 +28,19 @@ const useAuthStore = create((set) => ({
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('role', userData.role);
 
-      set({ 
-        user: userData, 
-        isAuthenticated: true, 
+      set({
+        user: userData,
+        isAuthenticated: true,
         role: userData.role,
         token: access_token,
-        loading: false 
+        loading: false
       });
       return true;
     } catch (err) {
       console.error('Login failed:', err);
-      set({ 
-        error: err.response?.data?.detail || 'Invalid credentials or server error', 
-        loading: false 
+      set({
+        error: err.response?.data?.detail || 'Invalid credentials or server error',
+        loading: false
       });
       return false;
     }
