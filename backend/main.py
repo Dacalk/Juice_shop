@@ -26,7 +26,7 @@ except ImportError:
     from backend.database import get_db, run_migrations
     from backend import models, auth
 
-app = FastAPI(title="Juice Bar POS API (MongoDB)")
+app = FastAPI(title="Juice Bar POS API (MongoDB)", redirect_slashes=False)
 router = APIRouter()
 
 # Run migrations (initial setup)
@@ -332,4 +332,8 @@ async def seed_db(db = Depends(get_db)):
     return {"message": "Seed successful: Created admin/admin123 and cashier/cashier123"}
 
 # --- FINALIZE ---
+# Belt and Suspenders: Include router both with and without prefix
+# This ensures that /api/auth/login and /auth/login both work, 
+# preventing 404s if Vercel strips the prefix before handing it to the function.
 app.include_router(router, prefix="/api")
+app.include_router(router)

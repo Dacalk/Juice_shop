@@ -1,25 +1,32 @@
 {
   "version": 2,
-  "rewrites": [
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "/backend/uploads/$1"
+      "src": "/uploads/(.*)",
+      "dest": "/backend/uploads/$1"
     },
     {
-      "source": "/assets/(.*)",
-      "destination": "/frontend/dist/assets/$1"
+      "src": "/assets/(.*)",
+      "dest": "/frontend/dist/assets/$1"
     },
     {
-      "source": "/favicon.ico",
-      "destination": "/frontend/dist/favicon.ico"
+      "src": "/favicon.ico",
+      "dest": "/frontend/dist/favicon.ico"
     },
     {
-      "source": "/((?!api|uploads|assets).*)",
-      "destination": "/frontend/dist/index.html"
+      "src": "/((?!api|uploads|assets).*)",
+      "dest": "/frontend/dist/index.html"
     }
   ],
   "cleanUrls": true
