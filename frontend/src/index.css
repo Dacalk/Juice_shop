@@ -81,8 +81,16 @@ body {
 }
 
 @media print {
-  body { background: white !important; color: black !important; }
-  .no-print { display: none !important; }
-  .print-only { display: block !important; }
-}
+  body {
+    background: white !important;
+    color: rgb(45, 33, 33) !important;
+  }
 
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
