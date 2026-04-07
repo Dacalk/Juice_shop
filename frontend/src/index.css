@@ -82,7 +82,7 @@ body {
 
 @media print {
   body {
-    background: white !important;
+    background: rgb(249, 146, 146) !important;
     color: rgb(45, 33, 33) !important;
   }
 
