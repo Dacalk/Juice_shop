@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "backend/api/index.py"
+      "destination": "api/index.py"
     },
     {
       "source": "/uploads/(.*)",
@@ -14,10 +14,5 @@
       "destination": "frontend/dist/$1"
     }
   ],
-  "functions": {
-    "backend/api/index.py": {
-      "runtime": "vercel-python@0.0.1"
-    }
-  },
   "cleanUrls": true
 }

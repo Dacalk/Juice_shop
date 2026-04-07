@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+motor
+pymongo
+dnspython
+python-dotenv
+python-jose[cryptography]
+bcrypt
+pydantic
+python-multipart
