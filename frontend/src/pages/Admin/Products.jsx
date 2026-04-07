@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  Tag, 
+import {
+  Package,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Tag,
   Coffee,
   X,
   Loader2,
@@ -20,6 +20,12 @@ import useAuthStore from '../../store/useAuthStore';
 
 import { API_URL } from '../../store/useAuthStore';
 
+const EMOJI_LIST = [
+  '🍉', '🥭', '🍎', '🍏', '🍐', '🍊', '🍋', '🍌', '🍇', '🍓', 
+  '🫐', '🍈', '🍒', '🍑', '🍍', '🥥', '🥝', '🍅', '🥑', '🥦', 
+  '🥕', '🥨', '🍘', '🥠', '🍹', '🥤', '🧋', '🍵', '☕', '🍧', 
+  '🍨', '🍦', '🍰', '🧁', '🍪', '🍩', '🥗', '🥪', '🥙'
+];
 
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -262,6 +268,7 @@ const Products = () => {
           <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('FruitSalad'))} title="FruitSalad Menu" icon={Apple} />
           <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Juice'))} title="Juice Menu" icon={CupSoda} />
           <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Gram'))} title="Gram Section" icon={Tag} />
+          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Other'))} title="Other Items" icon={Package} />
         </div>
       )}
 
@@ -306,17 +313,27 @@ const Products = () => {
               <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
             </div>
             <form onSubmit={handleAddProduct} className="p-10 space-y-6">
-              {/* Icon + Name */}
-              <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-1">
-                  <label className={labelCls}>Icon</label>
-                  <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl text-center text-2xl" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} maxLength={2} />
+               {/* Icon Selection */}
+                <div className="space-y-4">
+                  <label className={labelCls}>Select Icon</label>
+                  <div className="grid grid-cols-6 gap-2 p-4 bg-white/5 border border-white/10 rounded-3xl max-h-48 overflow-y-auto custom-scrollbar">
+                    {EMOJI_LIST.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setFormData({...formData, image: emoji})}
+                        className={`text-2xl p-2 rounded-xl transition-all hover:bg-white/10 ${formData.image === emoji ? 'bg-amber-500/20 ring-2 ring-amber-500/50 scale-110' : ''}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <label className={labelCls}>Label</label>
-                  <input required className={inputCls} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+
+                <div className="space-y-2">
+                  <label className={labelCls}>Item Label</label>
+                  <input required className={inputCls} placeholder="e.g. Fresh Orange Juice" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
                 </div>
-              </div>
 
               {/* Category + Unit/Price */}
               <div className="grid grid-cols-2 gap-6">
@@ -326,17 +343,18 @@ const Products = () => {
                     <option value="FruitSalad" className="bg-[#202020]">FruitSalad</option>
                     <option value="Juice" className="bg-[#202020]">Juice</option>
                     <option value="Gram Section" className="bg-[#202020]">Gram Section</option>
+                    <option value="Other" className="bg-[#202020]">Other</option>
                   </select>
                 </div>
                 {formData.category === 'Gram Section' ? (
                   <div>
                     <label className={labelCls}>Ref. Grams (e.g. 100)</label>
-                    <input type="number" required className={`${inputCls} text-[#eaf89b]`} value={formData.unit} onChange={(e) => setFormData({...formData, unit: e.target.value})} />
+                    <input type="number" required className={`${inputCls} text-[#eaf89b]`} value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} />
                   </div>
                 ) : (
                   <div>
                     <label className={labelCls}>Selling Price (Rs.)</label>
-                    <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
+                    <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
                   </div>
                 )}
               </div>
@@ -345,7 +363,7 @@ const Products = () => {
               {formData.category === 'Gram Section' && (
                 <div>
                   <label className={labelCls}>Selling Price for {formData.unit || 'X'}g (Rs.)</label>
-                  <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
+                  <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
                 </div>
               )}
 
@@ -366,7 +384,7 @@ const Products = () => {
                     placeholder="0.00"
                     className="w-full h-14 px-6 bg-white/5 border border-amber-500/20 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-amber-500/40 transition-all text-amber-400"
                     value={formData.cost_price}
-                    onChange={(e) => setFormData({...formData, cost_price: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
                   />
                   <p className="text-[9px] text-slate-500 mt-2 px-2">Used to calculate profit in reports. Leave 0 if unknown.</p>
                 </div>
@@ -388,18 +406,31 @@ const Products = () => {
               <button onClick={() => setIsEditModalOpen(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
             </div>
             <form onSubmit={handleUpdateProduct} className="p-10 space-y-6">
-              <div className="space-y-2">
-                <label className={labelCls}>Emoji Icon</label>
-                <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl text-center text-2xl outline-none" value={editFormData.image} onChange={(e) => setEditFormData({...editFormData, image: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <label className={labelCls}>Label</label>
-                <input required className={inputCls} value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
-              </div>
+               {/* Icon Selection */}
+                <div className="space-y-4">
+                  <label className={labelCls}>Update Icon</label>
+                  <div className="grid grid-cols-6 gap-2 p-4 bg-white/5 border border-white/10 rounded-3xl max-h-48 overflow-y-auto custom-scrollbar">
+                    {EMOJI_LIST.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setEditFormData({...editFormData, image: emoji})}
+                        className={`text-2xl p-2 rounded-xl transition-all hover:bg-white/10 ${editFormData.image === emoji ? 'bg-amber-500/20 ring-2 ring-amber-500/50 scale-110' : ''}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className={labelCls}>Item Label</label>
+                  <input required className={inputCls} value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
+                </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className={labelCls}>Selling Price (Rs.)</label>
-                  <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={editFormData.price} onChange={(e) => setEditFormData({...editFormData, price: e.target.value})} />
+                  <input type="number" step="0.01" required className={`${inputCls} text-[#eaf89b]`} value={editFormData.price} onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <label className={labelCls}>Category</label>
@@ -407,13 +438,14 @@ const Products = () => {
                     <option value="FruitSalad" className="bg-[#202020]">FruitSalad</option>
                     <option value="Juice" className="bg-[#202020]">Juice</option>
                     <option value="Gram Section" className="bg-[#202020]">Gram Section</option>
+                    <option value="Other" className="bg-[#202020]">Other</option>
                   </select>
                 </div>
               </div>
               {editFormData.category === 'Gram Section' && (
                 <div className="space-y-2">
                   <label className={labelCls}>Reference Weight (Grams)</label>
-                  <input type="number" required className={`${inputCls} text-[#eaf89b]`} value={editFormData.unit} onChange={(e) => setEditFormData({...editFormData, unit: e.target.value})} />
+                  <input type="number" required className={`${inputCls} text-[#eaf89b]`} value={editFormData.unit} onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })} />
                 </div>
               )}
 
@@ -434,7 +466,7 @@ const Products = () => {
                     placeholder="0.00"
                     className="w-full h-14 px-6 bg-white/5 border border-amber-500/20 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-amber-500/40 transition-all text-amber-400"
                     value={editFormData.cost_price}
-                    onChange={(e) => setEditFormData({...editFormData, cost_price: e.target.value})}
+                    onChange={(e) => setEditFormData({ ...editFormData, cost_price: e.target.value })}
                   />
                   <p className="text-[9px] text-slate-500 mt-2 px-2">Used to calculate profit in reports.</p>
                 </div>

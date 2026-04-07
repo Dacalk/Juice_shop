@@ -1,47 +1,35 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 import os
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel
+from typing import Optional
+from dotenv import load_dotenv
 
-# Resolve DB path: Use DATABASE_PATH env var (for Fly.io /data/pos.db) or fallback to local
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_DB_PATH = os.path.join(_HERE, 'pos.db')
-db_file_path = os.getenv("DATABASE_PATH", _DEFAULT_DB_PATH)
-print(f"[Database] Using DB at: {db_file_path}")
+# Load .env file
+load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_file_path}"
+# MongoDB Connection String
+# ONLY from environment variables (no hardcoded fallback here)
+MONGODB_URL = os.getenv("MONGODB_URL")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "juice_shop_pos")
 
+if not MONGODB_URL:
+    raise ValueError("ERROR: MONGODB_URL environment variable is NOT set. Please set it in your .env file.")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+client = AsyncIOMotorClient(MONGODB_URL)
+db = client[DATABASE_NAME]
 
-Base = declarative_base()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    """Dependency that returns the MongoDB database instance."""
+    return db
 
 def run_migrations():
-    """Safely add new columns to existing databases without losing data."""
-    import sqlite3
-    db_path = os.getenv("DATABASE_PATH", os.path.join(_HERE, 'pos.db'))
+    """
+    MongoDB is schema-less, but we can use this for initial 
+    index creation or data seeding if needed.
+    """
+    print(f"[Database] Connected to: {DATABASE_NAME}")
 
-    if not os.path.exists(db_path):
-        return  # Fresh DB — create_all will handle it
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    # Get existing columns in products table
-    cursor.execute("PRAGMA table_info(products)")
-    existing_cols = {row[1] for row in cursor.fetchall()}
-    # Add cost_price if missing
-    if 'cost_price' not in existing_cols:
-        cursor.execute("ALTER TABLE products ADD COLUMN cost_price REAL DEFAULT 0.0")
-        print("[Migration] Added column: products.cost_price")
-    conn.commit()
-    conn.close()
-
+# Collections
+users_collection = db["users"]
+products_collection = db["products"]
+orders_collection = db["orders"]

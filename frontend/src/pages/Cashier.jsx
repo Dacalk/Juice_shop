@@ -36,6 +36,7 @@ const Cashier = () => {
   const [sidebarView, setSidebarView] = useState('billing'); // 'billing' | 'weight' | 'checkout' | 'success'
   const [selectedGramProduct, setSelectedGramProduct] = useState(null);
   const [inputWeight, setInputWeight] = useState('');
+  const [gramInputMode, setGramInputMode] = useState('weight'); // 'weight' | 'price'
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isOrderProcessing, setIsOrderProcessing] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
@@ -52,7 +53,12 @@ const Cashier = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/products`);
-      setProducts(response.data);
+      if (Array.isArray(response.data)) {
+        setProducts(response.data);
+      } else {
+        console.error('Invalid products data format:', response.data);
+        setProducts([]);
+      }
     } catch (err) {
       setError('Failed to fetch products');
       console.error(err);
@@ -72,14 +78,23 @@ const Cashier = () => {
   };
 
   const handleAddWeightItem = () => {
-    const weight = parseFloat(inputWeight);
-    if (isNaN(weight) || weight <= 0) {
-      setError('Please enter a valid weight in grams.');
+    const val = parseFloat(inputWeight);
+    if (isNaN(val) || val <= 0) {
+      setError(`Please enter a valid ${gramInputMode === 'weight' ? 'weight' : 'price'}.`);
       return;
     }
-    addItem(selectedGramProduct, weight);
+
+    let finalWeight = val;
+    if (gramInputMode === 'price') {
+      const unitGrams = parseInt(selectedGramProduct?.unit.match(/(\d+)/)?.[0]) || 100;
+      finalWeight = (val / selectedGramProduct.price) * unitGrams;
+    }
+
+    addItem(selectedGramProduct, finalWeight);
     setSidebarView('billing');
     setSelectedGramProduct(null);
+    setInputWeight('');
+    setGramInputMode('weight'); // Reset for next use
   };
 
   const handleCheckout = async () => {
@@ -121,7 +136,7 @@ const Cashier = () => {
 
   const categories = ['All', 'FruitSalad', 'Juice', 'Gram Section'];
 
-  const filteredProducts = products.filter(p =>
+  const filteredProducts = (Array.isArray(products) ? products : []).filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (activeCategory === 'All' ||
       p.category === activeCategory ||
@@ -300,26 +315,44 @@ const Cashier = () => {
 
             {sidebarView === 'weight' && (
               <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-10 duration-300">
-                <div className="p-8 border-b border-white/5 flex items-center justify-between">
-                  <h2 className="text-xl font-black text-white uppercase tracking-tight">Enter Weight</h2>
-                  <button className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white" onClick={() => setSidebarView('billing')}>
-                    <X size={20} />
-                  </button>
-                </div>
                 <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
                   <div className="w-24 h-24 bg-white/5 rounded-3xl flex items-center justify-center text-5xl mb-6">{selectedGramProduct?.image}</div>
                   <h3 className="text-xl font-black mb-1 text-white uppercase tracking-tight">{selectedGramProduct?.name}</h3>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8">Current Stock: {selectedGramProduct?.stock}</p>
-                  <input
-                    autoFocus
-                    type="number"
-                    className="w-full h-24 bg-white/5 border border-white/10 rounded-[2rem] text-center text-5xl font-black outline-none mb-6 text-white shadow-inner focus:bg-white/10 transition-all"
-                    placeholder="000"
-                    value={inputWeight}
-                    onChange={(e) => setInputWeight(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddWeightItem()}
-                  />
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-8">Input amount in Grams</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8">Stock: {selectedGramProduct?.stock}g | {selectedGramProduct?.price} LKR per {selectedGramProduct?.unit}g</p>
+                  
+                  {/* Mode Toggle */}
+                  <div className="flex bg-white/5 p-1.5 rounded-2xl mb-8 border border-white/5 w-full max-w-[280px]">
+                    <button 
+                      onClick={() => setGramInputMode('weight')}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${gramInputMode === 'weight' ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Weight (g)
+                    </button>
+                    <button 
+                      onClick={() => setGramInputMode('price')}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${gramInputMode === 'price' ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Price (LKR)
+                    </button>
+                  </div>
+
+                  <div className="relative w-full group">
+                    <span className="absolute left-8 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-600 group-focus-within:text-white transition-colors">
+                      {gramInputMode === 'weight' ? 'g' : 'Rs.'}
+                    </span>
+                    <input
+                      autoFocus
+                      type="number"
+                      className="w-full h-24 bg-white/5 border border-white/10 rounded-[2rem] text-center text-5xl font-black outline-none mb-6 text-white shadow-inner focus:bg-white/10 transition-all px-12"
+                      placeholder="000"
+                      value={inputWeight}
+                      onChange={(e) => setInputWeight(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddWeightItem()}
+                    />
+                  </div>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-8">
+                    {gramInputMode === 'weight' ? 'Input amount in Grams' : 'Input total amount in LKR'}
+                  </p>
                 </div>
                 <div className="p-8">
                   <button

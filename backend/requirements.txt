@@ -1,8 +1,11 @@
 fastapi
-uvicorn[standard]
-sqlalchemy
+uvicorn
+motor
+pymongo
+dnspython
+python-dotenv
+python-jose[cryptography]
+bcrypt
 pydantic
 python-multipart
-python-jose[cryptography]
-passlib[bcrypt]
-requests
+# sqlalchemy # REMOVED
