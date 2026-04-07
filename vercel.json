@@ -10,8 +10,16 @@
       "destination": "backend/uploads/$1"
     },
     {
-      "source": "/(.*)",
-      "destination": "frontend/dist/$1"
+      "source": "/assets/(.*)",
+      "destination": "frontend/dist/assets/$1"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "frontend/dist/favicon.ico"
+    },
+    {
+      "source": "/((?!api|uploads|assets).*)",
+      "destination": "frontend/dist/index.html"
     }
   ],
   "cleanUrls": true
