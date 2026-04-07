@@ -13,3 +13,4 @@ except ImportError:
 
 # This is the entry point for Vercel
 # The app object will be exported and served as a serverless function
+# Combined with root_path="/api" in main.py, this handles all /api routes correctly.

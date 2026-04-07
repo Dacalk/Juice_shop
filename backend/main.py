@@ -25,7 +25,10 @@ except ImportError:
     from backend.database import get_db, run_migrations
     from backend import models, auth
 
-app = FastAPI(title="Juice Bar POS API (MongoDB)")
+app = FastAPI(
+    title="Juice Bar POS API (MongoDB)",
+    root_path="/api" if os.getenv("VERCEL") else ""
+)
 
 # Run migrations (initial setup)
 run_migrations()
