@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import uuid
+import tempfile
 
 from pydantic import BaseModel
 from bson import ObjectId
@@ -26,6 +27,7 @@ except ImportError:
     from backend import models, auth
 
 app = FastAPI(title="Juice Bar POS API (MongoDB)")
+router = APIRouter()
 
 # Run migrations (initial setup)
 run_migrations()
@@ -33,9 +35,13 @@ run_migrations()
 # --- UPLOADS STORAGE ---
 # Vercel filesystem is read-only. For local dev, we use "uploads".
 # For production, /tmp is writable but transient.
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+if os.getenv("VERCEL"):
+    UPLOAD_DIR = "/tmp/uploads"
+else:
+    UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+
 if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
@@ -66,7 +72,7 @@ class ProductCreate(BaseModel):
 
 # --- ROUTES ---
 
-@app.get("/health")
+@router.get("/health")
 async def health_check(db = Depends(get_db)):
     try:
         # Check if we can ping the database
@@ -77,7 +83,7 @@ async def health_check(db = Depends(get_db)):
 
 # --- AUTH ---
 
-@app.post("/auth/login")
+@router.post("/auth/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
     user_dict = await db["users"].find_one({"username": form_data.username})
     if not user_dict or not auth.verify_password(form_data.password, user_dict["hashed_password"]):
@@ -93,7 +99,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db = Depends(g
         "user": {"username": user_dict["username"], "role": user_dict["role"]}
     }
 
-@app.post("/auth/register")
+@router.post("/auth/register")
 async def register_user(user: UserCreate, db = Depends(get_db)):
     if await db["users"].find_one({"username": user.username}):
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -116,13 +122,13 @@ async def register_user(user: UserCreate, db = Depends(get_db)):
 
 # --- USERS ---
 
-@app.get("/users")
+@router.get("/users")
 async def get_users(db = Depends(get_db), current_user = Depends(auth.check_admin)):
     cursor = db["users"].find()
     users = await cursor.to_list(length=100)
     return [{"id": str(u["_id"]), "username": u["username"], "role": u["role"]} for u in users]
 
-@app.post("/users")
+@router.post("/users")
 async def create_user(user: UserCreate, db = Depends(get_db), current_user = Depends(auth.check_admin)):
     if await db["users"].find_one({"username": user.username}):
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -135,7 +141,7 @@ async def create_user(user: UserCreate, db = Depends(get_db), current_user = Dep
     result = await db["users"].insert_one(new_user)
     return {"id": str(result.inserted_id), "username": user.username, "role": user.role}
 
-@app.put("/users/{user_id}")
+@router.put("/users/{user_id}")
 async def update_user(user_id: str, user_update: dict, db = Depends(get_db), current_user = Depends(auth.check_admin)):
     update_data = {}
     if "username" in user_update: update_data["username"] = user_update["username"]
@@ -150,7 +156,7 @@ async def update_user(user_id: str, user_update: dict, db = Depends(get_db), cur
     updated = await db["users"].find_one({"_id": ObjectId(user_id)})
     return {"id": str(updated["_id"]), "username": updated["username"], "role": updated["role"]}
 
-@app.delete("/users/{user_id}")
+@router.delete("/users/{user_id}")
 async def delete_user(user_id: str, db = Depends(get_db), current_user = Depends(auth.check_admin)):
     if current_user.id == user_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
@@ -162,7 +168,7 @@ async def delete_user(user_id: str, db = Depends(get_db), current_user = Depends
 
 # --- PRODUCTS ---
 
-@app.get("/products")
+@router.get("/products")
 async def get_products(db = Depends(get_db)):
     cursor = db["products"].find()
     products = await cursor.to_list(length=1000)
@@ -171,7 +177,7 @@ async def get_products(db = Depends(get_db)):
         del p["_id"]
     return products
 
-@app.post("/products")
+@router.post("/products")
 async def create_product(product: ProductCreate, db = Depends(get_db), current_user = Depends(auth.check_admin)):
     new_product = product.dict()
     result = await db["products"].insert_one(new_product)
@@ -179,7 +185,7 @@ async def create_product(product: ProductCreate, db = Depends(get_db), current_u
     del new_product["_id"]
     return new_product
 
-@app.put("/products/{product_id}")
+@router.put("/products/{product_id}")
 async def update_product(product_id: str, product_update: dict, db = Depends(get_db), current_user = Depends(auth.check_admin)):
     if "id" in product_update: del product_update["id"]
     result = await db["products"].update_one({"_id": ObjectId(product_id)}, {"$set": product_update})
@@ -191,7 +197,7 @@ async def update_product(product_id: str, product_update: dict, db = Depends(get
     del updated["_id"]
     return updated
 
-@app.delete("/products/{product_id}")
+@router.delete("/products/{product_id}")
 async def delete_product(product_id: str, db = Depends(get_db), current_user = Depends(auth.check_admin)):
     result = await db["products"].delete_one({"_id": ObjectId(product_id)})
     if result.deleted_count == 0:
@@ -200,7 +206,7 @@ async def delete_product(product_id: str, db = Depends(get_db), current_user = D
 
 # --- ORDERS ---
 
-@app.post("/orders")
+@router.post("/orders")
 async def create_order(order_data: dict, db = Depends(get_db), current_user = Depends(auth.get_current_user)):
     inv_num = f"INV-{datetime.now().strftime('%Y%m%d%H%M')}-{str(uuid.uuid4())[:4].upper()}"
     
@@ -253,7 +259,7 @@ async def create_order(order_data: dict, db = Depends(get_db), current_user = De
     del new_order["_id"]
     return new_order
 
-@app.get("/reports/daily")
+@router.get("/reports/daily")
 async def get_daily_report(
     start_date: Optional[str] = None, 
     end_date: Optional[str] = None,
@@ -297,7 +303,7 @@ async def get_daily_report(
 
 # --- SEED ---
 
-@app.get("/seed")
+@router.get("/seed")
 async def seed_db(db = Depends(get_db)):
     if await db["users"].find_one({"username": "admin"}):
         return {"message": "Database already seeded"}
@@ -324,3 +330,6 @@ async def seed_db(db = Depends(get_db)):
     await db["products"].insert_many(products)
     
     return {"message": "Seed successful: Created admin/admin123 and cashier/cashier123"}
+
+# --- FINALIZE ---
+app.include_router(router, prefix="/api")
