@@ -22,5 +22,14 @@
       "destination": "/frontend/dist/index.html"
     }
   ],
-  "cleanUrls": true
+  "cleanUrls": true,
+  "experimentalServices": {
+    "frontend": {
+      "routePrefix": "/"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/_/backend"
+    }
+  }
 }
