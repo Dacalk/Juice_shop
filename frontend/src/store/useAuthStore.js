@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-export const API_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_URL = import.meta.env.VITE_API_URL ?? ''; // Fallback to root (no /api prefix) for Vercel deployment
 
 
 const useAuthStore = create((set) => ({
