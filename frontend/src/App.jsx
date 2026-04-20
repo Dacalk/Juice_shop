@@ -8,6 +8,8 @@ import AdminLayout from './pages/Admin/AdminLayout';
 import Products from './pages/Admin/Products';
 import Users from './pages/Admin/Users';
 import Reports from './pages/Admin/Reports';
+import Categories from './pages/Admin/Categories';
+
 // Admin Dashboard Home / Summary (Placeholder for now)
 const AdminHome = () => (
   <Reports />
@@ -42,6 +44,7 @@ function App() {
         }>
           <Route index element={<AdminHome />} />
           <Route path="products" element={<Products />} />
+          <Route path="categories" element={<Categories />} />
           <Route path="users" element={<Users />} />
         </Route>
 

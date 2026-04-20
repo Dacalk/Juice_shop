@@ -32,6 +32,7 @@ const Products = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const token = useAuthStore(state => state.token);
@@ -61,7 +62,21 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/categories`);
+      setCategories(response.data);
+      // Update default category to first if available
+      if (response.data.length > 0) {
+        setFormData(prev => ({ ...prev, category: response.data[0].name }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories');
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -265,10 +280,26 @@ const Products = () => {
         <div className="py-40 text-center"><Loader2 size={40} className="animate-spin text-lime-500 mx-auto" /></div>
       ) : (
         <div className="flex flex-col gap-8">
-          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('FruitSalad'))} title="FruitSalad Menu" icon={Apple} />
-          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Juice'))} title="Juice Menu" icon={CupSoda} />
-          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Gram'))} title="Gram Section" icon={Tag} />
-          <SectionTable items={filteredProducts.filter(p => (p.category || '').includes('Other'))} title="Other Items" icon={Package} />
+          {categories.map(cat => {
+            const catItems = filteredProducts.filter(p => p.category === cat.name);
+            if (catItems.length === 0 && searchTerm) return null;
+            return (
+              <SectionTable 
+                key={cat.id} 
+                items={catItems} 
+                title={`${cat.name} Menu`} 
+                icon={() => <span className="text-2xl">{cat.icon}</span>} 
+              />
+            );
+          })}
+          {/* Fallback for items with no matching category if any delete happened */}
+          {filteredProducts.filter(p => !categories.find(c => c.name === p.category)).length > 0 && (
+             <SectionTable 
+                items={filteredProducts.filter(p => !categories.find(c => c.name === p.category))} 
+                title="Uncategorized Items" 
+                icon={Package} 
+              />
+          )}
         </div>
       )}
 
@@ -340,10 +371,9 @@ const Products = () => {
                 <div>
                   <label className={labelCls}>Category</label>
                   <select className={`${inputCls} appearance-none`} value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value, unit: e.target.value === 'Gram Section' ? '100' : 'pc'})}>
-                    <option value="FruitSalad" className="bg-[#202020]">FruitSalad</option>
-                    <option value="Juice" className="bg-[#202020]">Juice</option>
-                    <option value="Gram Section" className="bg-[#202020]">Gram Section</option>
-                    <option value="Other" className="bg-[#202020]">Other</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.name} className="bg-[#202020]">{cat.name}</option>
+                    ))}
                   </select>
                 </div>
                 {formData.category === 'Gram Section' ? (
@@ -435,10 +465,9 @@ const Products = () => {
                 <div className="space-y-2">
                   <label className={labelCls}>Category</label>
                   <select className={`${inputCls} appearance-none`} value={editFormData.category} onChange={(e) => setEditFormData({...editFormData, category: e.target.value, unit: e.target.value === 'Gram Section' ? (editFormData.unit === 'pc' ? '100' : editFormData.unit) : 'pc'})}>
-                    <option value="FruitSalad" className="bg-[#202020]">FruitSalad</option>
-                    <option value="Juice" className="bg-[#202020]">Juice</option>
-                    <option value="Gram Section" className="bg-[#202020]">Gram Section</option>
-                    <option value="Other" className="bg-[#202020]">Other</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.name} className="bg-[#202020]">{cat.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>

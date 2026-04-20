@@ -70,6 +70,10 @@ class ProductCreate(BaseModel):
     stock: float = 0.0
     cost_price: float = 0.0
 
+class CategoryCreate(BaseModel):
+    name: str
+    icon: str = "🏷️"
+
 # --- ROUTES ---
 
 @router.get("/health")
@@ -204,6 +208,51 @@ async def delete_product(product_id: str, db = Depends(get_db), current_user = D
         raise HTTPException(status_code=404, detail="Product not found")
     return {"message": "Product deleted successfully"}
 
+# --- CATEGORIES ---
+
+@router.get("/categories")
+async def get_categories(db = Depends(get_db)):
+    cursor = db["categories"].find()
+    categories = await cursor.to_list(length=100)
+    for c in categories:
+        c["id"] = str(c["_id"])
+        del c["_id"]
+    return categories
+
+@router.post("/categories")
+async def create_category(category: CategoryCreate, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    new_cat = category.dict()
+    result = await db["categories"].insert_one(new_cat)
+    new_cat["id"] = str(result.inserted_id)
+    del new_cat["_id"]
+    return new_cat
+
+@router.put("/categories/{category_id}")
+async def update_category(category_id: str, category_update: dict, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    if "id" in category_update: del category_update["id"]
+    result = await db["categories"].update_one({"_id": ObjectId(category_id)}, {"$set": category_update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    updated = await db["categories"].find_one({"_id": ObjectId(category_id)})
+    updated["id"] = str(updated["_id"])
+    del updated["_id"]
+    return updated
+
+@router.delete("/categories/{category_id}")
+async def delete_category(category_id: str, db = Depends(get_db), current_user = Depends(auth.check_admin)):
+    # Check if any products use this category
+    cat = await db["categories"].find_one({"_id": ObjectId(category_id)})
+    if cat:
+        product_count = await db["products"].count_documents({"category": cat["name"]})
+        if product_count > 0:
+            raise HTTPException(status_code=400, detail=f"Cannot delete category with {product_count} products assigned to it")
+            
+    result = await db["categories"].delete_one({"_id": ObjectId(category_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return {"message": "Category deleted successfully"}
+
 # --- ORDERS ---
 
 @router.post("/orders")
@@ -305,31 +354,51 @@ async def get_daily_report(
 
 @router.get("/seed")
 async def seed_db(db = Depends(get_db)):
-    if await db["users"].find_one({"username": "admin"}):
-        return {"message": "Database already seeded"}
+    messages = []
     
     # Admin & Cashier
-    await db["users"].insert_one({
-        "username": "admin", 
-        "hashed_password": auth.get_password_hash("admin123"), 
-        "role": "admin"
-    })
-    await db["users"].insert_one({
-        "username": "cashier", 
-        "hashed_password": auth.get_password_hash("cashier123"), 
-        "role": "cashier"
-    })
+    if not await db["users"].find_one({"username": "admin"}):
+        await db["users"].insert_one({
+            "username": "admin", 
+            "hashed_password": auth.get_password_hash("admin123"), 
+            "role": "admin"
+        })
+        messages.append("Created admin user")
+    
+    if not await db["users"].find_one({"username": "cashier"}):
+        await db["users"].insert_one({
+            "username": "cashier", 
+            "hashed_password": auth.get_password_hash("cashier123"), 
+            "role": "cashier"
+        })
+        messages.append("Created cashier user")
     
     # Products
-    products = [
-        {"name": "Mixed Fruit Juice", "price": 450, "category": "FruitSalad & Juice", "unit": "pc", "image": "🍉", "stock": 50},
-        {"name": "Mango Delight", "price": 550, "category": "FruitSalad & Juice", "unit": "pc", "image": "🥭", "stock": 50},
-        {"name": "Spicy Murukku", "price": 120, "category": "Gram Section", "unit": "100g", "image": "🥨", "stock": 5000},
-        {"name": "Sweet Murukku", "price": 150, "category": "Gram Section", "unit": "100g", "image": "🍩", "stock": 5000}
-    ]
-    await db["products"].insert_many(products)
+    if await db["products"].count_documents({}) == 0:
+        products = [
+            {"name": "Mixed Fruit Juice", "price": 450, "category": "FruitSalad", "unit": "pc", "image": "🍉", "stock": 50},
+            {"name": "Mango Delight", "price": 550, "category": "FruitSalad", "unit": "pc", "image": "🥭", "stock": 50},
+            {"name": "Spicy Murukku", "price": 120, "category": "Gram Section", "unit": "100g", "image": "🥨", "stock": 5000},
+            {"name": "Sweet Murukku", "price": 150, "category": "Gram Section", "unit": "100g", "image": "🍩", "stock": 5000}
+        ]
+        await db["products"].insert_many(products)
+        messages.append("Created initial products")
     
-    return {"message": "Seed successful: Created admin/admin123 and cashier/cashier123"}
+    # Categories
+    default_categories = [
+        {"name": "FruitSalad", "icon": "🍎"},
+        {"name": "Juice", "icon": "🍹"},
+        {"name": "Gram Section", "icon": "🥨"},
+        {"name": "Other", "icon": "📦"},
+        {"name": "FruitSalad & Juice", "icon": "🥤"}
+    ]
+    
+    for cat in default_categories:
+        if not await db["categories"].find_one({"name": cat["name"]}):
+            await db["categories"].insert_one(cat)
+            messages.append(f"Created category: {cat['name']}")
+    
+    return {"message": "Seed status", "details": messages if messages else "No new data added"}
 
 # --- FINALIZE ---
 # Belt and Suspenders: Include router both with and without prefix

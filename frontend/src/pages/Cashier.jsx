@@ -29,6 +29,7 @@ const Cashier = () => {
   const { cartItems, addItem, removeItem, updateQuantity, clearCart, getTotal } = useCartStore();
 
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,7 +48,17 @@ const Cashier = () => {
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/categories`);
+      setCategories([{ id: 'all', name: 'All' }, ...response.data]);
+    } catch (err) {
+      console.error('Failed to fetch categories');
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -134,8 +145,6 @@ const Cashier = () => {
     window.print();
   };
 
-  const categories = ['All', 'FruitSalad', 'Juice', 'Gram Section'];
-
   const filteredProducts = (Array.isArray(products) ? products : []).filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (activeCategory === 'All' ||
@@ -198,12 +207,12 @@ const Cashier = () => {
               <div className="flex gap-4 mt-6 shrink-0 overflow-x-auto pb-4 custom-scrollbar no-scrollbar border-b border-white/5">
                 {categories.map(cat => (
                   <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-8 py-3 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${activeCategory === cat ? 'bg-white/10 text-white border border-white/20 shadow-lg' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'}`}
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.name)}
+                    className={`px-8 py-3 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${activeCategory === cat.name ? 'bg-white/10 text-white border border-white/20 shadow-lg' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'}`}
                   >
-                    {cat.split('&')[0]}
-                    {cat === 'All' ? '' : <span className="ml-2 opacity-60 text-[#eaf89b]">●</span>}
+                    {cat.name.split('&')[0]}
+                    {cat.name === 'All' ? '' : <span className="ml-2 opacity-60 text-[#eaf89b]">●</span>}
                   </button>
                 ))}
               </div>

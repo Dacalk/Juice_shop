@@ -54,6 +54,11 @@ class Product(MongoModel):
     stock: float = 0.0
     cost_price: float = 0.0
 
+class Category(MongoModel):
+    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    name: str # e.g. 'FruitSalad', 'Juice', 'Gram Section'
+    icon: str = "🏷️" # Emoji or Icon name
+
 class OrderItem(MongoModel):
     product_id: str
     name: str

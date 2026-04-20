@@ -6,6 +6,7 @@ import {
   Users, 
   BarChart3, 
   LogOut, 
+  Tag,
   Store
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
@@ -23,6 +24,7 @@ const AdminLayout = () => {
   const navItems = [
     { name: 'Sales Reports', path: '/admin', icon: BarChart3, exact: true },
     { name: 'Products', path: '/admin/products', icon: Package },
+    { name: 'Categories', path: '/admin/categories', icon: Tag },
     { name: 'Users', path: '/admin/users', icon: Users },
   ];
 
